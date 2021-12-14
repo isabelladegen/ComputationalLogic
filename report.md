@@ -28,7 +28,7 @@ Extend prolexa to do default reasoning by introducing to types of rules: `defaul
 
 # <a name="testing">Testing #
 
-To avoid breaking existing functionality with my changes I started of by  making a list of commands that need to keep working:
+To learn what Prolexa can do and to avoid breaking existing functionality with my changes, I started off by making a list of commands that are working:
 
 **Tell me about...**
 - `"tell me about unknownnoun".` - none existing noun &rarr;
@@ -154,6 +154,9 @@ To avoid breaking existing functionality with my changes I started of by  making
   tweety flies
   ```
 
+I then decided that it would take too long to manually run through these every time I'm making a change and decided to build a testing notebook that I can execute on colab where I can assert that existing and new functionality works.
+
+I also changed the answer reading so I could operate with utf-8 strings which allows for nicer test reading
 
 
 ---------
