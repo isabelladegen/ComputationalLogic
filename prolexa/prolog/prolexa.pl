@@ -17,10 +17,19 @@
 
 :-prompt(_Old,'prolexa> ').
 
+:-op(900,fy,not).
 
 %some intial stored rules
 stored_rule(1,[(mortal(X):-human(X))]).
 stored_rule(1,[(human(peter):-true)]).
+
+%additional rules for default reasoning
+%stored_rule(1,[default(flies(X):-bird(X))]).
+stored_rule(1,[not fly(X):-penguin(X)]).
+stored_rule(1,[fly(X):-bird(X)]).
+stored_rule(1,[bird(X):-penguin(X)]).
+stored_rule(1,[penguin(opus):-true]).
+stored_rule(1,[bird(peep):-true]).
 
 
 %%% Prolexa Command Line Interface %%%
@@ -35,7 +44,7 @@ prolexa_cli:-
 		prolexa_cli
 	).
 
-% Main predicate that uses DCG as defined in prolexa_grammar.pl 
+% Main predicate that uses DCG as defined in prolexa_grammar.pl
 % to distinguish between sentences, questions and commands
 handle_utterance(SessionId,Utterance,Answer):-
 	write_debug(utterance(Utterance)),
@@ -43,7 +52,7 @@ handle_utterance(SessionId,Utterance,Answer):-
 	split_string(Utterance," ","",StringList),	% tokenize by spaces
 	maplist(string_lower,StringList,StringListLow),	% all lowercase
 	maplist(atom_string,UtteranceList,StringListLow),	% strings to atoms
-% A. Utterance is a sentence 
+% A. Utterance is a sentence
 	( phrase(sentence(Rule),UtteranceList),
 	  write_debug(rule(Rule)),
 	  ( known_rule(Rule,SessionId) -> % A1. It follows from known rules
@@ -87,7 +96,7 @@ my_json_answer(Message,DictOut):-
 	DictOut = _{
 	      response: _{
 	      				outputSpeech: _{
-	      								type: "PlainText", 
+	      								type: "PlainText",
 	      								text: Message
 	      							},
 	      				shouldEndSession: false
@@ -110,7 +119,7 @@ handle_intent(_,_,DictOut):-
 
 
 %%% generating intents from grammar %%%
-% Run this if you want to test the skill on the 
+% Run this if you want to test the skill on the
 % Alexa developer console
 
 mk_prolexa_intents:-
@@ -172,4 +181,3 @@ mk_prolexa_intents:-
 				}
 			   ),
 		close(Stream).
-

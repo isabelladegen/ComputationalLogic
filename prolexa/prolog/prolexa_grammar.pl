@@ -26,7 +26,7 @@ pred(mortal,  1,[a/mortal,n/mortal]).
 pred(bird,    1,[n/bird]).
 %pred(bat,     1,[n/bat]).
 pred(penguin, 1,[n/penguin]).
-pred(sparrow, 1,[n/sparrow]).
+%pred(sparrow, 1,[n/sparrow]).
 pred(fly,     1,[v/fly]).
 
 pred2gr(P,1,C/W,X=>Lit):-
@@ -51,7 +51,7 @@ verb_p2s(Verb_p,Verb_s):-
 sentence(C) --> sword,sentence1(C).
 
 sword --> [].
-sword --> [that]. 
+sword --> [that].
 
 % most of this follows Simply Logical, Chapter 7
 sentence1(C) --> determiner(N,M1,M2,C),noun(N,M1),verb_phrase(N,M2).
@@ -72,6 +72,8 @@ determiner(p,X=>B,X=>H,[(H:-B)]) --> [all].
 
 proper_noun(s,tweety) --> [tweety].
 proper_noun(s,peter) --> [peter].
+proper_noun(s,opus) --> [opus].
+proper_noun(s,peep) --> [peep].
 
 
 %%% questions %%%
@@ -79,8 +81,8 @@ proper_noun(s,peter) --> [peter].
 question(Q) --> qword,question1(Q).
 
 qword --> [].
-%qword --> [if]. 
-%qword --> [whether]. 
+%qword --> [if].
+%qword --> [whether].
 
 question1(Q) --> [who],verb_phrase(s,_X=>Q).
 question1(Q) --> [is], proper_noun(N,X),property(N,X=>Q).
@@ -95,29 +97,29 @@ question1(Q) --> [does],proper_noun(_,X),verb_phrase(_,X=>Q).
 % The idea is that if :-phrase(command(g(Goal,Answer)),UtteranceList). succeeds,
 % it will instantiate Goal; if :-call(Goal). succeeds, it will instantiate Answer.
 % See case C. in prolexa.pl
-% Example: 
+% Example:
 %	command(g(random_fact(Fact),Fact)) --> [tell,me,anything].
-% means that "tell me anything" will trigger the goal random_fact(Fact), 
+% means that "tell me anything" will trigger the goal random_fact(Fact),
 % which will generate a random fact as output for prolexa.
 
-command(g(retractall(prolexa:stored_rule(_,C)),"I erased it from my memory")) --> forget,sentence(C). 
-command(g(retractall(prolexa:stored_rule(_,_)),"I am a blank slate")) --> forgetall. 
-command(g(all_rules(Answer),Answer)) --> kbdump. 
+command(g(retractall(prolexa:stored_rule(_,C)),"I erased it from my memory")) --> forget,sentence(C).
+command(g(retractall(prolexa:stored_rule(_,_)),"I am a blank slate")) --> forgetall.
+command(g(all_rules(Answer),Answer)) --> kbdump.
 command(g(all_answers(PN,Answer),Answer)) --> tellmeabout,proper_noun(s,PN).
 command(g(explain_question(Q,_,Answer),Answer)) --> [explain,why],sentence1([(Q:-true)]).
 command(g(random_fact(Fact),Fact)) --> getanewfact.
-%command(g(pf(A),A)) --> peterflach. 
-%command(g(iai(A),A)) --> what. 
+%command(g(pf(A),A)) --> peterflach.
+%command(g(iai(A),A)) --> what.
 command(g(rr(A),A)) --> thanks.
 
 % The special form
-%	command(g(true,<response>)) --> <sentence>. 
+%	command(g(true,<response>)) --> <sentence>.
 % maps specific input sentences to specific responses.
 
-command(g(true,"I can do a little bit of logical reasoning. You can talk with me about humans and birds.")) --> [what,can,you,do,for,me,minerva]. 
-%command(g(true,"Your middle name is Adriaan")) --> [what,is,my,middle,name]. 
-%command(g(true,"Today you can find out about postgraduate study at the University of Bristol. This presentation is about the Centre for Doctoral Training in Interactive Artificial Intelligence")) --> today. 
-%command(g(true,"The presenter is the Centre Director, Professor Peter Flach")) --> todaysspeaker. 
+command(g(true,"I can do a little bit of logical reasoning. You can talk with me about humans and birds.")) --> [what,can,you,do,for,me,minerva].
+%command(g(true,"Your middle name is Adriaan")) --> [what,is,my,middle,name].
+%command(g(true,"Today you can find out about postgraduate study at the University of Bristol. This presentation is about the Centre for Doctoral Training in Interactive Artificial Intelligence")) --> today.
+%command(g(true,"The presenter is the Centre Director, Professor Peter Flach")) --> todaysspeaker.
 
 thanks --> [thank,you].
 thanks --> [thanks].
@@ -157,25 +159,25 @@ random_fact(X):-
 % today --> [what,today,is,about].
 % today --> [what,is,today,about].
 % today --> [what,is,happening,today].
-% 
+%
 % todaysspeaker --> [who,gives,'today\'s',seminar].
 % todaysspeaker --> [who,gives,it].
 % todaysspeaker --> [who,is,the,speaker].
-% 
+%
 % peterflach --> [who,is],hepf.
 % peterflach --> [tell,me,more,about],hepf.
-% 
+%
 % what --> [what,is],iai.
 % what --> [tell,me,more,about],iai.
-% 
+%
 % hepf --> [he].
 % hepf --> [peter,flach].
-% 
+%
 % iai --> [that].
 % iai --> [interactive,'A.I.'].
 % iai --> [interactive,artificial,intelligence].
-% 
+%
 % pf("According to Wikipedia, Pieter Adriaan Flach is a Dutch computer scientist and a Professor of Artificial Intelligence in the Department of Computer Science at the University of Bristol.").
-% 
+%
 % iai("The Centre for Doctoral Training in Interactive Artificial Intelligence will train the next generation of innovators in human-in-the-loop AI systems, enabling them to responsibly solve societally important problems. You can ask Peter for more information.").
-% 
+%

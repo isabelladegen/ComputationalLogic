@@ -3,7 +3,7 @@
 %		prove_question/3,		% main question-answering engine
 %		explain_question/3,		% extended version that constructs a proof tree
 %		known_rule/2,			% test if a rule can be deduced from stored rules
-%		all_rules/1,			% collect all stored rules 
+%		all_rules/1,			% collect all stored rules
 %		all_answers/2,			% everything that can be proved about a particular Proper Noun
 %	]).
 
@@ -19,7 +19,7 @@ prove_question(Query,SessionId,Answer):-
 		phrase(sentence(Clauses),AnswerAtomList),
 		atomics_to_string(AnswerAtomList," ",Answer)
 	; Answer = 'Sorry, I don\'t think this is the case'
-	).	
+	).
 
 % two-argument version that can be used in maplist/3 (see all_answers/2)
 prove_question(Query,Answer):-
@@ -29,13 +29,13 @@ prove_question(Query,Answer):-
 		phrase(sentence(Clauses),AnswerAtomList),
 		atomics_to_string(AnswerAtomList," ",Answer)
 	; Answer = ""
-	).	
+	).
 
 
 %%% Extended version of prove_question/3 that constructs a proof tree %%%
 explain_question(Query,SessionId,Answer):-
 	findall(R,prolexa:stored_rule(SessionId,R),Rulebase),
-	( prove_rb(Query,Rulebase,[],Proof) ->
+	( explain(Query,Rulebase,[],Proof) ->
 		maplist(pstep2message,Proof,Msg),
 		phrase(sentence1([(Query:-true)]),L),
 		atomic_list_concat([therefore|L]," ",Last),
@@ -69,19 +69,48 @@ add_body_to_rulebase(A,Rs0,[[(A:-true)]|Rs0]).
 
 %%% meta-interpreter that constructs proofs %%%
 
+% meta-interpreter for rules and defaults from chapter 8.1
+explain(true,_Rulebase,P, P):-!.
+explain((A,B),Rulebase,P0,P):-!,
+  explain(A,Rulebase,P0,P1),
+  explain(B,Rulebase,P1,P). %TODO might need to change this to a similar way to how proofs are done
+explain(A,Rulebase,P0,P):-
+  prove_rb(A,Rulebase,P0,P). % explain by rules only
+explain(A,Rulebase,P0,P):-
+	find_clause(default(A:-B),Default,Rulebase),
+  explain(B,Rulebase,[default(A,Default)|P0],P),
+  not contradiction(A,Rulebase,P).  % A consistent with P
+
 % 3d argument is accumulator for proofs
 prove_rb(true,_Rulebase,P,P):-!.
 prove_rb((A,B),Rulebase,P0,P):-!,
 	find_clause((A:-C),Rule,Rulebase),
 	conj_append(C,B,D),
-    prove_rb(D,Rulebase,[p((A,B),Rule)|P0],P).
+  prove_rb(D,Rulebase,[p((A,B),Rule)|P0],P).
 prove_rb(A,Rulebase,P0,P):-
-    find_clause((A:-B),Rule,Rulebase),
-	prove_rb(B,Rulebase,[p(A,Rule)|P0],P).
+  find_clause((A:-B),Rule,Rulebase),
+	prove_rb(B,Rulebase,[p(A,Rule)|P0],P),
+	not contradiction(A,Rulebase,P). % A consistent with P
 
 % top-level version that ignores proof
 prove_rb(Q,RB):-
 	prove_rb(Q,RB,[],_P).
+
+% check contradiction against rules, use simple proof to avoid circular contradition calls
+contradiction(not A,Rulebase,P):-!,
+	prove_s(A,Rulebase,P,_P1).
+contradiction(A,Rulebase,P):-
+	prove_s(not A,Rulebase,P,_P1).
+
+% proof simple same as proof_rb but does not check for contradictions in proofs
+prove_s(true,_Rulebase,P,P):-!.
+prove_s((A,B),Rulebase,P0,P):-!,
+	find_clause((A:-C),Rule,Rulebase),
+	conj_append(C,B,D),
+  prove_s(D,Rulebase,[p((A,B),Rule)|P0],P).
+prove_s(A,Rulebase,P0,P):-
+  find_clause((A:-B),Rule,Rulebase),
+	prove_s(B,Rulebase,[p(A,Rule)|P0],P).
 
 
 %%% Utilities from nl_shell.pl %%%
@@ -99,7 +128,7 @@ transform(A,[(A:-true)]).
 
 %%% Two more commands: all_rules/1 and all_answers/2
 
-% collect all stored rules 
+% collect all stored rules
 all_rules(Answer):-
 	findall(R,prolexa:stored_rule(_ID,R),Rules),
 	maplist(rule2message,Rules,Messages),
@@ -120,5 +149,3 @@ all_answers(PN,Answer):-
 	( Messages=[] -> atomic_list_concat(['I know nothing about',PN],' ',Answer)
 	; otherwise -> atomic_list_concat(Messages,". ",Answer)
 	).
-
-
