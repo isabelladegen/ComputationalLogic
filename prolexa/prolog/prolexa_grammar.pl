@@ -57,14 +57,19 @@ sword --> [that].
 sentence1(C) --> determiner(N,M1,M2,C),noun(N,M1),verb_phrase(N,M2).
 sentence1([(L:-true)]) --> proper_noun(N,X),verb_phrase(N,X=>L).
 
+verb_phrase(s,not(M)) --> [isnt],property(s,M).
 verb_phrase(s,M) --> [is],property(s,M).
+verb_phrase(p,not(M)) --> [arent],property(p,M).
+verb_phrase(p,not(M)) --> [dont], iverb(p,M).
 verb_phrase(p,M) --> [are],property(p,M).
+verb_phrase(s,not(M)) --> [doesnt], iverb(s,M).
 verb_phrase(N,M) --> iverb(N,M).
 
 property(N,M) --> adjective(N,M).
 property(s,M) --> [a],noun(s,M).
 property(p,M) --> noun(p,M).
 
+determiner(p,X=>B,not(X=>H),[(not(H):-B)]) --> [].
 determiner(s,X=>B,X=>H,[(H:-B)]) --> [every].
 determiner(p,X=>B,X=>H,[(H:-B)]) --> [all].
 %determiner(p,X=>B,X=>H,[(H:-B)]) --> [].

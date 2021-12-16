@@ -7,6 +7,9 @@
  1. [Default Rules](#defaultrules)
  1. [Testing](#testing)
 
+ Perhaps write about
+ 1. [Coding Practices](#codingpractices) and write about testing as a sub set
+
 
 
 # <a name="defaultrules">Default Rules #
@@ -50,7 +53,7 @@ Add exception text. 'Most birds fly except xyz'
 
 
 ### How to test:
-- bla
+- <instruction on what can be done in colab>
 
 ### Changes:
 
@@ -59,6 +62,21 @@ Add exception text. 'Most birds fly except xyz'
   ```
   proper_noun(s,opus) --> [opus].
   proper_noun(s,peep) --> [peep].
+  ```
+- extended grammar to deal with not in rules.
+  Behaviour without change: *Tell me all.* &rarr; *I heard you say,  tell me all , could you rephrase that please?*
+  Should be: *Tell me all.* &rarr; *I heard you say,  tell me all , could you rephrase that please?* &rarr; *every human is mortal. peter is human. penguins dont fly. every bird flies. every penguin is a bird. opus is a penguin. peep is a bird*
+
+  1. Added a new `determiner()` to deal with rules with `not` in the head:
+  ```
+  determiner(p,X=>B,not(X=>H),[(not(H):-B)]) --> [].
+  ```
+  2. Added new `verb_phrase()` to deal with negations both for singular and plural verbs and adjectives:
+  ```
+  verb_phrase(s,not(M)) --> [isnt],property(s,M).
+  verb_phrase(p,not(M)) --> [arent],property(p,M).
+  verb_phrase(p,not(M)) --> [dont], iverb(p,M).
+  verb_phrase(s,not(M)) --> [doesnt], iverb(s,M).
   ```
 
 **prolexa_engine.pl**
@@ -384,6 +402,47 @@ But for a normal bird like peep it should be:
 
 And for an abnormal bird like opus it should be:
 `opus is a bird; most birds fly execept pengings; opus is a penguin`
+
+-------
+## Details on 'Tell me all'.'##
+
+What I want instead is: [Penguins, dont, fly]
+1. determiner not to add every and map to Plural
+2. verb_phrase not to stumble over that there's no predicate &rarr; simple solution would be to add a predicate for not(fly(X)) other solution would be to use the not to add a dont and then remove the not and test the verb_phrase on just fly(X)
+
+- Calls Goal `all_rules(Answer)`
+  - findsall stored_rules &rarr; Rules
+
+  Then for every rule:
+  - maplist Goals rule2message, List1=Rules, List2 (where the message will be going)
+    - maplist(Rules, List2, rule2message)
+      - calls Goal rule2message with first item of the Rules and List 2 `rule2message(Rule, Message)`
+        - calls `phrase(sentence1(Rule), Sentence)` &rarr; C in sentence one is the Rule (See grammar)
+          - calls `determiner` &rarr; N=s (cause it was the first), M1=body of rule, M2=head of rule, Message  now has 'every' added
+          - calls `noun(N, M)` &rarr; N is the numerous (Singular/Plural), M is the term e.g human
+            - adds the noun to message [every M1] (M1 being the body) and calls `pred2gr(_P, 1, n/Noun, M1)`
+              - pred2gr &rarr; P = _P, 1 ignore its session id, C/W is e.g n/Noun, X=>Lit with M1 (human):
+                1. pred(P, 1, L) &rarr; all new variables &rarr; that goes through each `pred(..)` clause in the Grammar: pred(P,1,L) &rarr; pred(fly,1,[v/fly])  &rarr P is the predicate
+                2. member(C/W,L) &rarr; member(n/Noun, [v/fly]) passes if C/W is element of L
+                3. Lit=..[P,X] &rarr; P=body=W, C=n (from C/W) -> not too sure
+          - calls `verb_phrase(N, M2)` &rarr; M2 = head, N=numerous from determiner e.g `verb_phrase(s, mortal)`
+            - uses is if N is s, are if N is p, calls `property(s,M)` with M being head
+              - adjective() calls `pred2gr(_P, 1, a/Adj, M2)`
+          **sentence1(C) matches to [noun, adjective] or [noun, noun] or [noun, iverb]**
+          Singular or plural get's defined in the determiner and is used from then on
+          - calls atomics_to_string(Sentence, " ", Message) &rarr; atomics_to_string([every, human, is, mortal], " ", Message) $rarr; Message="every human is mortal"
+
+What goes wrong for rule `not(fly(X)):-penguin(X)`:
+- `phrase(sentence1([not(fly(X)):-penguin(X)]), Sentence)`
+  - `determiner(N,M1,M2,C)` &rarr; `determiner(N,M1,M2,[not(fly(X)):-penguin(X)])`
+    - N=s, M1=B=penguin(X), M2=H=not(fly(X)), Sentence=[every]
+    - **starts the sentence wrong for negation**
+  - `noun(N,M1)` &rarr; `noun(s,X=>penguin(X))`
+    - Noun = penguin
+    - **wrongly mapped to signular**
+  - `verb_phrase(N, M2)` &rarr; `verb_phrase(s, X=not(fly(X)))`
+    - adds [is]
+    - **cannot find a predicate not(fly(X))**
 
 ---------
 Write about:
