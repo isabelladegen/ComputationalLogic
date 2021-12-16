@@ -48,7 +48,23 @@ prolexa> "Explain why peep flies".
 peep is a bird; some birds fly; therefore peep flies
 ```
 
-Changex to
+Ensure Tell me about proper noun also uses default rules as long as they are not a contradiction. To do so `all_answers` which is used for queries like "Tell me about <proper_noun>" also uses explain instead of just proof.
+
+```
+prolexa> "Tell me all about peep".
+*** utterance(Tell me all about peep)
+*** goal(all_answers(peep,_60240))
+*** answer(peep is a bird)
+peep is a bird
+
+prolexa> "Tell me all about opus".
+*** utterance(Tell me all about opus)
+*** goal(all_answers(opus,_62220))
+*** answer(opus is a bird. opus is a penguin)
+opus is a bird. opus is a penguin
+```
+
+TODO: Make sure you can add default rules from Prolexa plus
 
 ----
 First:
@@ -118,7 +134,16 @@ Add exception text. 'Most birds fly except xyz'
   - then it looks for `default(A:-B)` clauses in the rulebase, `explains` B and uses the same `p(A,Rule)` to later generate the message from the proof
   - after that it checks that A is consistent with P
   - Both `explain` and `contradiction` are similar to the ones in section 8.1 of the book but changed to use the Rulebase and matching Prolexa's variable naming
-- The new meta interpreter gets called in `explain_question()` like this: `explain(Query,Rulebase,[],Proof)` instead of calling `prove_rb(Query,Rulebase,[],Proof)` like was done before
+
+  The new meta interpreter gets called in `explain_question()` like this: `explain(Query,Rulebase,[],Proof)` instead of calling `prove_rb(Query,Rulebase,[],Proof)` like was done before.
+
+- added a top level version that can be used to `prove_questions` including default rules
+  ```
+  explain(Q,RB):-
+  	explain(Q,RB,[],_P).
+  ```
+  This gets called in both `prove_question(Query,Answer)` versions like this:  `explain(Query,Rulebase)` instead of `prove_rb(Query,Rulebase)`
+
 
 **prolexa.pl**
 - added new rules for default reasoning

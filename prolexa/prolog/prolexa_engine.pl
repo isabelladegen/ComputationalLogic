@@ -14,7 +14,7 @@
 
 prove_question(Query,SessionId,Answer):-
 	findall(R,prolexa:stored_rule(SessionId,R),Rulebase),
-	( prove_rb(Query,Rulebase) ->
+	( explain(Query,Rulebase) ->
 		transform(Query,Clauses),
 		phrase(sentence(Clauses),AnswerAtomList),
 		atomics_to_string(AnswerAtomList," ",Answer)
@@ -24,7 +24,7 @@ prove_question(Query,SessionId,Answer):-
 % two-argument version that can be used in maplist/3 (see all_answers/2)
 prove_question(Query,Answer):-
 	findall(R,prolexa:stored_rule(_SessionId,R),Rulebase),
-	( prove_rb(Query,Rulebase) ->
+	( explain(Query,Rulebase) ->
 		transform(Query,Clauses),
 		phrase(sentence(Clauses),AnswerAtomList),
 		atomics_to_string(AnswerAtomList," ",Answer)
@@ -58,7 +58,7 @@ known_rule([Rule],SessionId):-
 	try((numbervars(Rule,0,_),
 	     Rule=(H:-B),
 	     add_body_to_rulebase(B,Rulebase,RB2),
-	     prove_rb(H,RB2)
+	     prove_rb(H,RB2) %TODO check if this should be explain too
 	   )).
 
 add_body_to_rulebase((A,B),Rs0,Rs):-!,
@@ -73,7 +73,7 @@ add_body_to_rulebase(A,Rs0,[[(A:-true)]|Rs0]).
 explain(true,_Rulebase,P, P):-!.
 explain((A,B),Rulebase,P0,P):-!,
   explain(A,Rulebase,P0,P1),
-  explain(B,Rulebase,P1,P). %TODO might need to change this to a similar way to how proofs are done
+  explain(B,Rulebase,P1,P).
 explain(A,Rulebase,P0,P):-
   prove_rb(A,Rulebase,P0,P). % explain by rules only
 explain(A,Rulebase,P0,P):-
@@ -92,9 +92,13 @@ prove_rb(A,Rulebase,P0,P):-
 	prove_rb(B,Rulebase,[p(A,Rule)|P0],P),
 	not contradiction(A,Rulebase,P). % A consistent with P
 
-% top-level version that ignores proof
+% top-level version that ignores proof %TODO check if still needed
 prove_rb(Q,RB):-
 	prove_rb(Q,RB,[],_P).
+
+% top-level version that ignores proof
+explain(Q,RB):-
+	explain(Q,RB,[],_P).
 
 % check contradiction against rules, use simple proof to avoid circular contradition calls
 contradiction(not A,Rulebase,P):-!,
