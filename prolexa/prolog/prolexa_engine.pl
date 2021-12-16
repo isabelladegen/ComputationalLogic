@@ -14,7 +14,7 @@
 
 prove_question(Query,SessionId,Answer):-
 	findall(R,prolexa:stored_rule(SessionId,R),Rulebase),
-	( explain(Query,Rulebase) ->
+	( explain_rb(Query,Rulebase) ->
 		transform(Query,Clauses),
 		phrase(sentence(Clauses),AnswerAtomList),
 		atomics_to_string(AnswerAtomList," ",Answer)
@@ -24,7 +24,7 @@ prove_question(Query,SessionId,Answer):-
 % two-argument version that can be used in maplist/3 (see all_answers/2)
 prove_question(Query,Answer):-
 	findall(R,prolexa:stored_rule(_SessionId,R),Rulebase),
-	( explain(Query,Rulebase) ->
+	( explain_rb(Query,Rulebase) ->
 		transform(Query,Clauses),
 		phrase(sentence(Clauses),AnswerAtomList),
 		atomics_to_string(AnswerAtomList," ",Answer)
@@ -35,7 +35,7 @@ prove_question(Query,Answer):-
 %%% Extended version of prove_question/3 that constructs a proof tree %%%
 explain_question(Query,SessionId,Answer):-
 	findall(R,prolexa:stored_rule(SessionId,R),Rulebase),
-	( explain(Query,Rulebase,[],Proof) ->
+	( explain_rb(Query,Rulebase,[],Proof) ->
 		maplist(pstep2message,Proof,Msg),
 		phrase(sentence1([(Query:-true)]),L),
 		atomic_list_concat([therefore|L]," ",Last),
@@ -70,15 +70,15 @@ add_body_to_rulebase(A,Rs0,[[(A:-true)]|Rs0]).
 %%% meta-interpreter that constructs proofs %%%
 
 % meta-interpreter for rules and defaults from chapter 8.1
-explain(true,_Rulebase,P, P):-!.
-explain((A,B),Rulebase,P0,P):-!,
-  explain(A,Rulebase,P0,P1),
-  explain(B,Rulebase,P1,P).
-explain(A,Rulebase,P0,P):-
+explain_rb(true,_Rulebase,P, P):-!.
+explain_rb((A,B),Rulebase,P0,P):-!,
+  explain_rb(A,Rulebase,P0,P1),
+  explain_rb(B,Rulebase,P1,P).
+explain_rb(A,Rulebase,P0,P):-
   prove_rb(A,Rulebase,P0,P). % explain by rules only
-explain(A,Rulebase,P0,P):-
+explain_rb(A,Rulebase,P0,P):-
 	find_clause(default(A:-B),Rule,Rulebase),
-  explain(B,Rulebase,[p(A,Rule)|P0],P),
+  explain_rb(B,Rulebase,[p(A,Rule)|P0],P),
   not contradiction(A,Rulebase,P).  % A consistent with P
 
 % 3d argument is accumulator for proofs
@@ -97,8 +97,8 @@ prove_rb(Q,RB):-
 	prove_rb(Q,RB,[],_P).
 
 % top-level version that ignores proof
-explain(Q,RB):-
-	explain(Q,RB,[],_P).
+explain_rb(Q,RB):-
+	explain_rb(Q,RB,[],_P).
 
 % check contradiction against rules, use simple proof to avoid circular contradition calls
 contradiction(not A,Rulebase,P):-!,

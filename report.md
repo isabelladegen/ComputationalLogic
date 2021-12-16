@@ -53,10 +53,14 @@ Ensure Tell me about proper noun also uses default rules as long as they are not
 ```
 prolexa> "Tell me all about peep".
 *** utterance(Tell me all about peep)
-*** goal(all_answers(peep,_60240))
-*** answer(peep is a bird)
-peep is a bird
+*** goal(all_answers(peep,_48568))
+*** answer(peep is a bird. peep flies)
+peep is a bird. peep flies
+```
 
+Ensure not rules are also included in the "Tell me about <proper_noun>" queries:
+
+```
 prolexa> "Tell me all about opus".
 *** utterance(Tell me all about opus)
 *** goal(all_answers(opus,_62220))
@@ -64,7 +68,7 @@ prolexa> "Tell me all about opus".
 opus is a bird. opus is a penguin
 ```
 
-TODO: Make sure you can add default rules from Prolexa plus
+TODO: Make sure you can add default rules from Prolexa plus "Known_rules"
 
 ----
 First:
@@ -113,36 +117,36 @@ Add exception text. 'Most birds fly except xyz'
   ```
 
 **prolexa_engine.pl**
-- added new meta interpreter for default rules `explain(Query,Rulebase,[],Proof)`
+- added new meta interpreter for default rules `explain_rb(Query,Rulebase,[],Proof)`
   ```
-  explain(true,_Rulebase,P, P):-!.
-  explain((A,B),Rulebase,P0,P):-!,
-    explain(A,Rulebase,P0,P1),
-    explain(B,Rulebase,P1,P).
-  explain(A,Rulebase,P0,P):-
+  explain_rb(true,_Rulebase,P, P):-!.
+  explain_rb((A,B),Rulebase,P0,P):-!,
+    explain_rb(A,Rulebase,P0,P1),
+    explain_rb(B,Rulebase,P1,P).
+  explain_rb(A,Rulebase,P0,P):-
     prove_rb(A,Rulebase,P0,P). % explain by rules only
-  explain(A,Rulebase,P0,P):-
+  explain_rb(A,Rulebase,P0,P):-
   	find_clause(default(A:-B),Rule,Rulebase),
-    explain(B,Rulebase,[p(A,Rule)|P0],P),
+    explain_rb(B,Rulebase,[p(A,Rule)|P0],P),
     not contradiction(A,Rulebase,P).  % A consistent with P
   ```
   - this meta interpreter calls the existing `prove_rb` to first attempt an explanation via rules:
     ```
-    explain(A,Rulebase,P0,P):-
+    explain_rb(A,Rulebase,P0,P):-
       prove_rb(A,Rulebase,P0,P). % explain by rules only
     ```
   - then it looks for `default(A:-B)` clauses in the rulebase, `explains` B and uses the same `p(A,Rule)` to later generate the message from the proof
   - after that it checks that A is consistent with P
   - Both `explain` and `contradiction` are similar to the ones in section 8.1 of the book but changed to use the Rulebase and matching Prolexa's variable naming
 
-  The new meta interpreter gets called in `explain_question()` like this: `explain(Query,Rulebase,[],Proof)` instead of calling `prove_rb(Query,Rulebase,[],Proof)` like was done before.
+  The new meta interpreter gets called in `explain_question()` like this: `explain_rb(Query,Rulebase,[],Proof)` instead of calling `prove_rb(Query,Rulebase,[],Proof)` like was done before.
 
 - added a top level version that can be used to `prove_questions` including default rules
   ```
-  explain(Q,RB):-
-  	explain(Q,RB,[],_P).
+  explain_rb(Q,RB):-
+  	explain_rb(Q,RB,[],_P).
   ```
-  This gets called in both `prove_question(Query,Answer)` versions like this:  `explain(Query,Rulebase)` instead of `prove_rb(Query,Rulebase)`
+  This gets called in both `prove_question(Query,Answer)` versions like this:  `explain_rb(Query,Rulebase)` instead of `prove_rb(Query,Rulebase)`
 
 
 **prolexa.pl**
@@ -505,11 +509,13 @@ What goes wrong for rule `not(fly(X)):-penguin(X)`:
 
 
 ## Explain why peep flies. &rarr;
-- `all_answers()` uses `explain_question()` which uses the new `explain()` meta interpreter
+- `all_answers()` uses `explain_question()` which uses the new `explain_rb()` meta interpreter
   - this finds proof: `[ p(bird(peep),[(bird(peep):-true)]), default(fly(peep),[default((fly(A):-bird(A)))])
 ]`
 - `pstep2message` reusing the same p() for proving
 
+
+##  called explain_rb instead of explain to avoid error
 ---------
 Write about:
 - What did you change
