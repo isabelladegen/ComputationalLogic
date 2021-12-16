@@ -35,7 +35,20 @@ Statements with exceptions are written as defaults:
 
 Adding new meta interpreters `explain` for default rules and `contradiction`.  Reusing the existing meta interpreter `prove_rb` to first attempt an explanation using a rule. If this fails it will attempt to find a default instead. See changes for more details.
 
-First checking that all the explanation using existing rules still work. Then I extended the 'Rulebase' with defaults.
+First checking that all the explanation using existing rules still work. Which they don't so I extended the grammar to deal with `not` in the head of a rule.
+
+Change the grammar to explain why a bird that's not a penguin flies with using *some* instead of
+every for default rules.
+
+```
+prolexa> "Explain why peep flies".
+*** utterance(Explain why peep flies)
+*** goal(explain_question(fly(peep),_49814,_49802))
+*** answer(peep is a bird; some birds fly; therefore peep flies)
+peep is a bird; some birds fly; therefore peep flies
+```
+
+Changex to
 
 ----
 First:
@@ -73,22 +86,39 @@ Add exception text. 'Most birds fly except xyz'
   ```
   2. Added new `verb_phrase()` to deal with negations both for singular and plural verbs and adjectives:
   ```
-  verb_phrase(s,not(M)) --> [isnt],property(s,M).
-  verb_phrase(p,not(M)) --> [arent],property(p,M).
+  verb_phrase(s,not(M)) --> [isnt],property(s,M). %TODO TEST
+  verb_phrase(p,not(M)) --> [arent],property(p,M). %TODO test
   verb_phrase(p,not(M)) --> [dont], iverb(p,M).
-  verb_phrase(s,not(M)) --> [doesnt], iverb(s,M).
+  verb_phrase(s,not(M)) --> [doesnt], iverb(s,M). %TODO TEST
+  ```
+- add a determiner for default rules that uses 'some' instead of 'every'
+  ```
+  determiner(p,X=>B,X=>H,[(default(H:-B))]) --> [some].
   ```
 
 **prolexa_engine.pl**
 - added new meta interpreter for default rules `explain(Query,Rulebase,[],Proof)`
-  - this meta interpreter calls the existing `prove_rb` to attempt an explanation via rules first:
+  ```
+  explain(true,_Rulebase,P, P):-!.
+  explain((A,B),Rulebase,P0,P):-!,
+    explain(A,Rulebase,P0,P1),
+    explain(B,Rulebase,P1,P).
+  explain(A,Rulebase,P0,P):-
+    prove_rb(A,Rulebase,P0,P). % explain by rules only
+  explain(A,Rulebase,P0,P):-
+  	find_clause(default(A:-B),Rule,Rulebase),
+    explain(B,Rulebase,[p(A,Rule)|P0],P),
+    not contradiction(A,Rulebase,P).  % A consistent with P
+  ```
+  - this meta interpreter calls the existing `prove_rb` to first attempt an explanation via rules:
     ```
     explain(A,Rulebase,P0,P):-
       prove_rb(A,Rulebase,P0,P). % explain by rules only
     ```
-  - it also checks for contradictions
+  - then it looks for `default(A:-B)` clauses in the rulebase, `explains` B and uses the same `p(A,Rule)` to later generate the message from the proof
+  - after that it checks that A is consistent with P
   - Both `explain` and `contradiction` are similar to the ones in section 8.1 of the book but changed to use the Rulebase and matching Prolexa's variable naming
-- In `explain_question` call the new `explain(Query,Rulebase,[],Proof)` meta interpreter instead of `prove_rb(Query,Rulebase,[],Proof)`
+- The new meta interpreter gets called in `explain_question()` like this: `explain(Query,Rulebase,[],Proof)` instead of calling `prove_rb(Query,Rulebase,[],Proof)` like was done before
 
 **prolexa.pl**
 - added new rules for default reasoning
@@ -404,7 +434,7 @@ And for an abnormal bird like opus it should be:
 `opus is a bird; most birds fly execept pengings; opus is a penguin`
 
 -------
-## Details on 'Tell me all'.'##
+## Details on 'Tell me all'. &rarr; all_rules()##
 
 What I want instead is: [Penguins, dont, fly]
 1. determiner not to add every and map to Plural
@@ -443,6 +473,17 @@ What goes wrong for rule `not(fly(X)):-penguin(X)`:
   - `verb_phrase(N, M2)` &rarr; `verb_phrase(s, X=not(fly(X)))`
     - adds [is]
     - **cannot find a predicate not(fly(X))**
+--------
+## Tell me all about peep. &rarr; all_answers(peep, Answers)
+
+`all_answers()` uses `prove_question()` which uses `prove_rb()` to proof all the answers the first one finds.
+
+
+## Explain why peep flies. &rarr;
+- `all_answers()` uses `explain_question()` which uses the new `explain()` meta interpreter
+  - this finds proof: `[ p(bird(peep),[(bird(peep):-true)]), default(fly(peep),[default((fly(A):-bird(A)))])
+]`
+- `pstep2message` reusing the same p() for proving
 
 ---------
 Write about:

@@ -24,12 +24,11 @@ stored_rule(1,[(mortal(X):-human(X))]).
 stored_rule(1,[(human(peter):-true)]).
 
 %additional rules for default reasoning
-%stored_rule(1,[default(flies(X):-bird(X))]).
-stored_rule(1,[not fly(X):-penguin(X)]).
-stored_rule(1,[fly(X):-bird(X)]).
-stored_rule(1,[bird(X):-penguin(X)]).
-stored_rule(1,[penguin(opus):-true]).
-stored_rule(1,[bird(peep):-true]).
+stored_rule(1,[(default(fly(X):-bird(X)))]).
+stored_rule(1,[(not fly(X):-penguin(X))]).
+stored_rule(1,[(bird(X):-penguin(X))]).
+stored_rule(1,[(penguin(opus):-true)]).
+stored_rule(1,[(bird(peep):-true)]).
 
 
 %%% Prolexa Command Line Interface %%%

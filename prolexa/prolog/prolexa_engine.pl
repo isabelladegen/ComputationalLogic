@@ -77,8 +77,8 @@ explain((A,B),Rulebase,P0,P):-!,
 explain(A,Rulebase,P0,P):-
   prove_rb(A,Rulebase,P0,P). % explain by rules only
 explain(A,Rulebase,P0,P):-
-	find_clause(default(A:-B),Default,Rulebase),
-  explain(B,Rulebase,[default(A,Default)|P0],P),
+	find_clause(default(A:-B),Rule,Rulebase),
+  explain(B,Rulebase,[p(A,Rule)|P0],P),
   not contradiction(A,Rulebase,P).  % A consistent with P
 
 % 3d argument is accumulator for proofs
