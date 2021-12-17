@@ -126,7 +126,7 @@ def standardised_query(pl, text):
     text = remove_punctuation(text)
     text = contractions.fix(text)
     text = lemmatise(text)
-    return escape_and_call_prolexa(pl, text)
+    return escape_and_call_prolexa(pl, text), text
 
 # for queries, not knowledge loading
 def standardise_tags(tags):

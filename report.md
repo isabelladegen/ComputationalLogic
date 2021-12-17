@@ -5,6 +5,7 @@
 
 ### Contents
  1. [Default Rules](#defaultrules)
+ 1. [Asking about nouns beyond proper nouns](#aksingaboutnouns)
  1. [Testing](#testing)
 
  Perhaps write about
@@ -169,6 +170,42 @@ Add exception text. 'Most birds fly except xyz'
 <!-- TODO Put the changes here -->
 
 ### Limitations:
+
+
+
+# <a name="aksingaboutnouns">Asking about nouns beyond proper nouns #
+
+Example:
+
+"Do birds fly", "Are humans mortal"
+
+### Approach
+Before any changes the reply this was "I heard you say,  Do birds fly , could you rephrase that please?" meaning that the "utterance" itself wasn't understood. Questions like these should be handeled by:
+
+```
+% B. Utterance is a question that can be answered
+	; phrase(question(Query),UtteranceList),
+	  write_debug(query(Query)),
+	  prove_question(Query,SessionId,Answer) -> true
+```
+
+However question(Query) is handled by the grammar and there's no case for do question. Also it always assumes proper nouns. `question1(Q) --> [do], proper_noun(p,X),verb_phrase(p,X=>Q).`
+
+### How to test
+
+### Changes
+**prolexa_engine.pl:**
+
+
+**prolexa_grammar.pl:**
+
+
+**prolexa.pl:**
+
+
+
+### Limitations
+
 
 
 # <a name="testing">Testing #
@@ -613,6 +650,32 @@ has M2 in the form of `not(X=>fly(X))` which then matches the verb_phrase for "d
 However the query for a proper noun e.g "Tell me all about Opus" matches
 `sentence1([(L:-true)]) --> proper_noun(N,X),verb_phrase(N,X=>L).` L being `not(fly(opus))`
 but m becomes `opus=>not(fly(opus))` which does no longer match `not(M)` clauses for verb_phrase. For this a new clause `sentence1([(not(L):-true)]) --> proper_noun(N,X),verb_phrase(N,not(X=>L)).` has been added which correctly deals with the not without propagating it to the verb_phrase avoiding them having to be duplicated.
+
+
+---------
+# <a name="aksingaboutnouns">Asking about nouns beyond proper nouns #
+
+Example:
+
+"Do birds fly", "Are humans mortal"
+
+### Approach
+
+### How to test
+
+### Changes
+**prolexa_engine.pl**
+
+
+**prolexa_grammar.pl**
+
+
+**prolexa.pl**
+
+
+
+### Limitations
+
 
 ---------
 Write about:
