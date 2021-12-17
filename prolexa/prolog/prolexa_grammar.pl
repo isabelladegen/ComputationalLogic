@@ -55,14 +55,15 @@ sword --> [that].
 
 % most of this follows Simply Logical, Chapter 7
 sentence1(C) --> determiner(N,M1,M2,C),noun(N,M1),verb_phrase(N,M2).
+sentence1([(not(L):-true)]) --> proper_noun(N,X),verb_phrase(N,not(X=>L)).
 sentence1([(L:-true)]) --> proper_noun(N,X),verb_phrase(N,X=>L).
 
-verb_phrase(s,not(M)) --> [isnt],property(s,M).
+verb_phrase(s,not(M)) --> [isnt],property(s,M). %TODO test
 verb_phrase(s,M) --> [is],property(s,M).
-verb_phrase(p,not(M)) --> [arent],property(p,M).
+verb_phrase(p,not(M)) --> [arent],property(p,M). %TODO test
 verb_phrase(p,not(M)) --> [dont], iverb(p,M).
 verb_phrase(p,M) --> [are],property(p,M).
-verb_phrase(s,not(M)) --> [doesnt], iverb(s,M).
+verb_phrase(s,not(M)) --> [doesnt], iverb(p,M). %verb_phrases are in plural form for negations
 verb_phrase(N,M) --> iverb(N,M).
 
 property(N,M) --> adjective(N,M).

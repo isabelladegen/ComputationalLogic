@@ -58,7 +58,22 @@ prolexa> "Tell me all about peep".
 peep is a bird. peep flies
 ```
 
-Ensure not rules are also included in the "Tell me about <proper_noun>" queries:
+Ensure not rules are also included in the "Tell me about <proper_noun>" queries. For "Tell me all about opus"  I'd expect Prolexa to answer "opus is a bird. opus is a penguin. opus doesn't fly". But instead she ignores the `stored_rule(1,[(not fly(X):-penguin(X))]).` due to `all_answers(Opus, Answers)` collecting all the known predicates `pred(P, 1, _)` and then attempting to prove each of them. However it's  not attempting to proof  `not` predicates.
+
+```
+% collect everything that can be proved about a particular Proper Noun
+all_answers(PN,Answer):-
+	findall(Q,(pred(P,1,_),Q=..[P,PN]),Queries), % collect known predicates from grammar
+	maplist(prove_question,Queries,Msg),
+	delete(Msg,"",Messages),
+	( Messages=[] -> atomic_list_concat(['I know nothing about',PN],' ',Answer)
+	; otherwise -> atomic_list_concat(Messages,". ",Answer)
+	).
+```
+
+There's two ways I thought about achieving it:
+1. extending the predicates list in the grammar with not fly &rarr; requires duplication of rules into predicates which will make maintaining the rules and and keeping them consistent harder
+2. trying to proof both the predicates and not predicates &rarr; this is more work but once it's working it will be less maintenance and easier to keep rules consistent, which should make teaching Prolexa things easier too
 
 ```
 prolexa> "Tell me all about opus".
@@ -515,7 +530,62 @@ What goes wrong for rule `not(fly(X)):-penguin(X)`:
 - `pstep2message` reusing the same p() for proving
 
 
-##  called explain_rb instead of explain to avoid error
+ Explain is a method that already exists in SWI so I also called it explain_rb instead of explain to avoid error
+
+##Collecting Answers for nouns and proper noun_s2p
+
+It would be nice if `all_answers()` would not take the things to prove from the pred list in the grammar
+```
+% collect everything that can be proved about a particular Proper Noun
+all_answers(PN,Answer):-
+	findall(Q,(pred(P,1,_),Q=..[P,PN]),Queries), % collect known predicates from grammar
+	maplist(prove_question,Queries,Msg),
+	delete(Msg,"",Messages),
+	( Messages=[] -> atomic_list_concat(['I know nothing about',PN],' ',Answer)
+	; otherwise -> atomic_list_concat(Messages,". ",Answer)
+	).
+```
+
+But instead from  the rules `all_rules` but with X assigned. This would also allow queries like
+"Are Humans mortal".
+
+```
+all_rules(Answer):-
+	findall(R,prolexa:stored_rule(_ID,R),Rules),
+	maplist(rule2message,Rules,Messages),
+	( Messages=[] -> Answer = "I know nothing"
+	; otherwise -> atomic_list_concat(Messages,". ",Answer)
+	).
+```
+
+First solution:
+```
+% collect everything that can be proved about a particular Proper Noun
+all_answers(PN,Answer):-
+	findall(Q,(pred(P,1,_),Q=..[P,PN]),Queries), % collect known predicates from grammar
+	maplist(prove_not_question,Queries,NotMsg),
+	maplist(prove_question,Queries,Msg),
+	delete(NotMsg,"",NotMsg1),
+	delete(Msg,"",Msg1),
+	append(Msg1, NotMsg1, Messages),
+	( Messages=[] -> atomic_list_concat(['I know nothing about',PN],' ',Answer)
+	; otherwise -> atomic_list_concat(Messages,". ",Answer)
+	).
+```
+It's not very neat and it does not fix the problem that I cannot ask about non proper noun.
+
+
+# More on Grammar and Negation
+
+The solution I chose is to do the phrasing in the grammar.
+For the query "Tell me all" where I expect the rule `not fly(X):-penguin(X)` to be translated to
+"Penguins don't fly". This is handled by the following`verb_phrase(p,not(M)) --> [dont], iverb(p,M).` and works as `sentence1(C) --> determiner(N,M1,M2,C),noun(N,M1),verb_phrase(N,M2).`
+has M2 in the form of `not(X=>fly(X))` which then matches the verb_phrase for "don't" sentences.
+
+However the query for a proper noun e.g "Tell me all about Opus" matches
+`sentence1([(L:-true)]) --> proper_noun(N,X),verb_phrase(N,X=>L).` L being `not(fly(opus))`
+but m becomes `opus=>not(fly(opus))` which does no longer match `not(M)` clauses for verb_phrase. For this a new clause `sentence1([(not(L):-true)]) --> proper_noun(N,X),verb_phrase(N,not(X=>L)).` has been added which correctly deals with the not without propagating it to the verb_phrase avoiding them having to be duplicated.
+
 ---------
 Write about:
 - What did you change
