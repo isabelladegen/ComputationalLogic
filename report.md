@@ -24,13 +24,13 @@ The grammar already maps 'Explain why ...' questions to `explain_question`: `com
 
 For default reasoning to work I need to be able to differentiate between rules and defaults. Statements
 without exceptions are written as a rule:
-- `rule(not flies(X):-penguin(X))`
-- `rule(bird(X):-penguin(X))`
-- `rule(penguin(opus):-true)`
-- `rule(bird(tweety):-true)`
+- `not flies(X):-penguin(X)`
+- `bird(X):-penguin(X)`
+- `penguin(opus):-true`
+- `bird(tweety):-true`
 
 
-Statements with exceptions are written as defaults:
+Statements with exceptions are written as defaults. This helps to distinguish between "every" and "some":
 -`default(flies(X):-bird(X))`
 
 Adding new meta interpreters `explain` for default rules and `contradiction`.  Reusing the existing meta interpreter `prove_rb` to first attempt an explanation using a rule. If this fails it will attempt to find a default instead. See changes for more details.
@@ -38,7 +38,7 @@ Adding new meta interpreters `explain` for default rules and `contradiction`.  R
 First checking that all the explanation using existing rules still work. Which they don't so I extended the grammar to deal with `not` in the head of a rule.
 
 Change the grammar to explain why a bird that's not a penguin flies with using *some* instead of
-every for default rules.
+*every* for default rules.
 
 ```
 prolexa> "Explain why peep flies".
@@ -571,8 +571,36 @@ all_answers(PN,Answer):-
 	( Messages=[] -> atomic_list_concat(['I know nothing about',PN],' ',Answer)
 	; otherwise -> atomic_list_concat(Messages,". ",Answer)
 	).
+
+% two-argument version that can be used in maplist/3 (see all_answers/2)
+prove_not_question(Query,Answer):-
+	findall(R,prolexa:stored_rule(_SessionId,R),Rulebase),
+	( explain_rb(not Query,Rulebase) ->
+		transform(not Query,Clauses),
+		phrase(sentence(Clauses),AnswerAtomList),
+		atomics_to_string(AnswerAtomList," ",Answer)
+	; Answer = ""
+	).
 ```
-It's not very neat and it does not fix the problem that I cannot ask about non proper noun.
+
+It's not very neat as loads of duplication but it works. Second solution is to do the explanation for the negated predicate in an else_if clause directly in  the `prove_question`
+which means `all_answers(PN,Answer)` does not need to get changed. I believe this is a less messy solution.
+
+```
+% two-argument version that can be used in maplist/3 (see all_answers/2)
+prove_question(Query,Answer):-
+  findall(R,prolexa:stored_rule(_SessionId,R),Rulebase),
+  ( explain_rb(Query,Rulebase) ->
+    transform(Query,Clauses),
+    phrase(sentence(Clauses),AnswerAtomList),
+    atomics_to_string(AnswerAtomList," ",Answer)
+  ; explain_rb(not Query,Rulebase) ->
+    transform(not Query,Clauses),
+    phrase(sentence(Clauses),AnswerAtomList),
+    atomics_to_string(AnswerAtomList," ",Answer)
+  ; Answer = ""
+  ).
+```
 
 
 # More on Grammar and Negation

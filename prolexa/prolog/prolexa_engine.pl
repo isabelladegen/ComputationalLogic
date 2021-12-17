@@ -28,13 +28,7 @@ prove_question(Query,Answer):-
 		transform(Query,Clauses),
 		phrase(sentence(Clauses),AnswerAtomList),
 		atomics_to_string(AnswerAtomList," ",Answer)
-	; Answer = ""
-	).
-
-% two-argument version that can be used in maplist/3 (see all_answers/2)
-prove_not_question(Query,Answer):-
-	findall(R,prolexa:stored_rule(_SessionId,R),Rulebase),
-	( explain_rb(not Query,Rulebase) ->
+	; explain_rb(not Query,Rulebase) ->
 		transform(not Query,Clauses),
 		phrase(sentence(Clauses),AnswerAtomList),
 		atomics_to_string(AnswerAtomList," ",Answer)
@@ -157,11 +151,8 @@ rule2message(Rule,Message):-
 % collect everything that can be proved about a particular Proper Noun
 all_answers(PN,Answer):-
 	findall(Q,(pred(P,1,_),Q=..[P,PN]),Queries), % collect known predicates from grammar
-	maplist(prove_not_question,Queries,NotMsg),
 	maplist(prove_question,Queries,Msg),
-	delete(NotMsg,"",NotMsg1),
-	delete(Msg,"",Msg1),
-	append(Msg1, NotMsg1, Messages),
+	delete(Msg,"",Messages),
 	( Messages=[] -> atomic_list_concat(['I know nothing about',PN],' ',Answer)
 	; otherwise -> atomic_list_concat(Messages,". ",Answer)
 	).
