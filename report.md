@@ -96,7 +96,7 @@ I've added a new predicate in the grammar for singing. For birds this allows add
 1. "Explain why peep sings" &rarr; "Peep is a bird. Some birds sing. Peep sings."
 1. "Does tweety sing." &rarr; "I dont think that's the case"
 1. "Tell me about tweety." &rarr; "Tweety is a swan. Tweety doesn't sing"
-1. "Explain why tweety doesn't sing." &rarr; "Tweety is a bird. Tweety is a swan. Swans dont sing. Tweety doesn't sing"
+1. "Explain why tweety doesn't sing." &rarr; "Tweety is a bird. Tweety is a swan. Swans don't sing. Tweety doesn't sing"
 
 
 
@@ -172,6 +172,23 @@ My extensions have also implemented negative statements:
   ```
   This gets called in both `prove_question(Query,Answer)` versions like this:  `explain_rb(Query,Rulebase)` instead of `prove_rb(Query,Rulebase)`
 
+- ensure that default rules are not added twice by using `explain_rb` in known rules instead of directly `prove_rb` and check for normal rules as well as default rules (probably not the most elegant solution to use an if else)
+```
+%%% test if a rule can be deduced from stored rules %%%
+known_rule([Rule],SessionId):-
+	findall(R,prolexa:stored_rule(SessionId,R),Rulebase),
+	( try((numbervars(Rule,0,_),
+	     Rule=(H:-B), %try normal rules
+	     add_body_to_rulebase(B,Rulebase,RB2),
+	     explain_rb(H,RB2)
+	   )) -> true
+		; try((numbervars(Rule,0,_),
+		     Rule=default(H:-B), %try default rules
+		     add_body_to_rulebase(B,Rulebase,RB2),
+		     explain_rb(H,RB2)
+		  ))
+	 ).
+```
 
 **prolexa.pl**
 - added new rules for default reasoning
@@ -179,7 +196,8 @@ My extensions have also implemented negative statements:
 
 ### Limitations:
 
-
+- Doesn't deal with ' in negation properly. Expects doesnt and dont instead of doesn't  and don't
+- If there is a negated rule in the rulebase such as `not fly(X):-penguin(X)` and `penguin(opus):-true` when we ask Prolexa "Does opus fly". She answers "I don't think that's the case" due to not checking to proof the negative rules which she should do. So it's by coincidence that this query works not by design. However in my opinion Prolexa should answer definitive for such rules "No opus doesn't fly" and only answer "Sorry I don't think this is the case" when she cannot proof the query.
 
 # <a name="aksingaboutnouns">Asking about nouns beyond proper nouns #
 

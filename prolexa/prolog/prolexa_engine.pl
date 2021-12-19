@@ -58,11 +58,17 @@ pstep2message(n(Fact),Message):-
 %%% test if a rule can be deduced from stored rules %%%
 known_rule([Rule],SessionId):-
 	findall(R,prolexa:stored_rule(SessionId,R),Rulebase),
-	try((numbervars(Rule,0,_),
-	     Rule=(H:-B),
+	( try((numbervars(Rule,0,_),
+	     Rule=(H:-B), %try normal rules
 	     add_body_to_rulebase(B,Rulebase,RB2),
-	     prove_rb(H,RB2) %TODO check if this should be explain too
-	   )).
+	     explain_rb(H,RB2)
+	   )) -> true
+		; try((numbervars(Rule,0,_),
+		     Rule=default(H:-B), %try default rules
+		     add_body_to_rulebase(B,Rulebase,RB2),
+		     explain_rb(H,RB2)
+		  ))
+	 ).
 
 add_body_to_rulebase((A,B),Rs0,Rs):-!,
 	add_body_to_rulebase(A,Rs0,Rs1),
