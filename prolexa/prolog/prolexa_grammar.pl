@@ -18,16 +18,11 @@ iverb(p,M)			--> [Verb],   {pred2gr(_P,1,v/Verb,M)}.
 % unary predicates for adjectives, nouns and verbs
 pred(human,   1,[a/human,n/human]).
 pred(mortal,  1,[a/mortal,n/mortal]).
-%pred(man,     1,[a/male,n/man]).
-%pred(woman,   1,[a/female,n/woman]).
-%pred(married, 1,[a/married]).
-%pred(bachelor,1,[n/bachelor]).
-%pred(mammal,  1,[n/mammal]).
 pred(bird,    1,[n/bird]).
-%pred(bat,     1,[n/bat]).
 pred(penguin, 1,[n/penguin]).
-%pred(sparrow, 1,[n/sparrow]).
+pred(swan, 1,[n/swan]).
 pred(fly,     1,[v/fly]).
+pred(sing,     1,[v/sing]).
 
 pred2gr(P,1,C/W,X=>Lit):-
 	pred(P,1,L),

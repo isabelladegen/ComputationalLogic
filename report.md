@@ -85,12 +85,30 @@ opus is a bird. opus is a penguin
 ```
 
 Adding new default and normal rules: Statements like "All birds tweet" should add standard rule whereas statements like "Some birds tweet" should add a default rule as "some" clearly suggests
-exceptions to the rule. This was working but I destroyed it with the order of my not rules!
+exceptions to the rule. This is working if the verb is a pred() in the grammar and a stored rule like `fly(X):-bird(X)` is added but no new pred() can be added.
+
+
+I've added a new predicate in the grammar for singing. For birds this allows adding a default rules "Some birds sing". To test this crate the following rules:
+1. "Some birds sing" &rarr; stored_rule([(default(bird(X):-sing(X)))])
+1. "Swans dont sing" &rarr; stored_rule([(not sing(X):-swan(X))])
+1. "Swans are birds" &rarr; stored_rule([(bird(X):-swan(X))])
+1. "Tweety is  a swan." &rarr; stored_rule([(swan(tweety):-true)])
+1. "Explain why peep sings" &rarr; "Peep is a bird. Some birds sing. Peep sings."
+1. "Does tweety sing." &rarr; "I dont think that's the case"
+1. "Tell me about tweety." &rarr; "Tweety is a swan. Tweety doesn't sing"
+1. "Explain why tweety doesn't sing." &rarr; "Tweety is a bird. Tweety is a swan. Swans dont sing. Tweety doesn't sing"
+
+
+
+
+TODO implement adding new pred TODO: "Every birds tweet", "Most birds tweet"
+
+
 
 The grammar is used in both ways on the way in to translate human language into Prolog and on the way out to translate Prolog to human language.
 
 
-TODO: "Every birds tweet", "Most birds tweet"
+
 
 TODO: Make sure you can add default rules from Prolexa plus "Known_rules"
 
