@@ -89,10 +89,10 @@ exceptions to the rule. This is working if the verb is a pred() in the grammar a
 
 
 I've added a new predicate in the grammar for singing. For birds this allows adding a default rules "Some birds sing". To test this crate the following rules:
-1. "Some birds sing" &rarr; stored_rule([(default(bird(X):-sing(X)))])
-1. "Swans dont sing" &rarr; stored_rule([(not sing(X):-swan(X))])
-1. "Swans are birds" &rarr; stored_rule([(bird(X):-swan(X))])
-1. "Tweety is  a swan." &rarr; stored_rule([(swan(tweety):-true)])
+1. "Some birds sing" &rarr; adds a stored rule `default(bird(X):-sing(X)`
+1. "Swans dont sing" &rarr; adds a stored rule `not sing(X):-swan(X)`
+1. "Swans are birds" &rarr; adds a stored rule `bird(X):-swan(X)`
+1. "Tweety is a swan." &rarr; adds a stored rule `swan(tweety):-true)`
 1. "Explain why peep sings" &rarr; "Peep is a bird. Some birds sing. Peep sings."
 1. "Does tweety sing." &rarr; "I dont think that's the case"
 1. "Tell me about tweety." &rarr; "Tweety is a swan. Tweety doesn't sing"
@@ -100,31 +100,13 @@ I've added a new predicate in the grammar for singing. For birds this allows add
 
 
 
-
 TODO implement adding new pred TODO: "Every birds tweet", "Most birds tweet"
-
 
 
 The grammar is used in both ways on the way in to translate human language into Prolog and on the way out to translate Prolog to human language.
 
-
-
-
-TODO: Make sure you can add default rules from Prolexa plus "Known_rules"
-
-----
-First:
-"Explain why opus flies".
-"default((flies(opus):-bird(opus))), rule((bird(opus):-true))" &rarr; `Most birds fly. Tweety is a bird` &rarr;
-Default gets extended with most. The rules are handeled as now.
-
-Second:
-Add exception text. 'Most birds fly except xyz'
-
-
- "Explain why peter is human".
- gets translated to
- explain_question(human(peter), _91778, Answer)
+My extensions have also implemented negative statements:
+1. "Peter doesnt sing". &rarr; "I will remember that Peter doesnt sing" &rarr; adds a rule `not sing(Peter):-true`
 
 
 ### How to test:
