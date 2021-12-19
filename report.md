@@ -84,6 +84,14 @@ prolexa> "Tell me all about opus".
 opus is a bird. opus is a penguin
 ```
 
+Adding new default and normal rules: Statements like "All birds tweet" should add standard rule whereas statements like "Some birds tweet" should add a default rule as "some" clearly suggests
+exceptions to the rule. This was working but I destroyed it with the order of my not rules!
+
+The grammar is used in both ways on the way in to translate human language into Prolog and on the way out to translate Prolog to human language.
+
+
+TODO: "Every birds tweet", "Most birds tweet"
+
 TODO: Make sure you can add default rules from Prolexa plus "Known_rules"
 
 ----

@@ -71,9 +71,9 @@ property(s,M) --> [a],noun(s,M).
 property(p,M) --> noun(p,M).
 
 determiner(p,X=>B,X=>H,[(default(H:-B))]) --> [some].
-determiner(p,X=>B,not(X=>H),[(not(H):-B)]) --> [].
 determiner(s,X=>B,X=>H,[(H:-B)]) --> [every].
 determiner(p,X=>B,X=>H,[(H:-B)]) --> [all].
+determiner(p,X=>B,not(X=>H),[(not(H):-B)]) --> [].
 %determiner(p,X=>B,X=>H,[(H:-B)]) --> [].
 %determiner(p, sk=>H1, sk=>H2, [(H1:-true),(H2 :- true)]) -->[some].
 
