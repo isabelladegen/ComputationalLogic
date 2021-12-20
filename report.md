@@ -195,8 +195,9 @@ known_rule([Rule],SessionId):-
 <!-- TODO Put the changes here -->
 
 ### Limitations:
-
-- Doesn't deal with ' in negation properly. Expects doesnt and dont instead of doesn't  and don't
+- can only query about proper nouns "Does tweety fly" not "Do birds fly"
+- cannot add new words to the vocabulary
+- Doesn't deal with ' in negation properly. Expects doesnt and dont instead of doesn't  and don't should be easy to escape with '\\'
 - If there is a negated rule in the rulebase such as `not fly(X):-penguin(X)` and `penguin(opus):-true` when we ask Prolexa "Does opus fly". She answers "I don't think that's the case" due to not checking to proof the negative rules which she should do. So it's by coincidence that this query works not by design. However in my opinion Prolexa should answer definitive for such rules "No opus doesn't fly" and only answer "Sorry I don't think this is the case" when she cannot proof the query.
 
 # <a name="aksingaboutnouns">Asking about nouns beyond proper nouns #
