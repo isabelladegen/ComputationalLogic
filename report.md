@@ -4,14 +4,44 @@
 [Isabella Degen](https://github.com/isabelladegen)
 
 ### Contents
- 1. [Default Rules](#defaultrules)
- 1. [Asking about nouns beyond proper nouns](#aksingaboutnouns)
- 1. [Testing](#testing)
+  1. [Motivation](#motivation)
+  2. [Method](#method)
+
+  3. [Default Rules](#defaultrules)
+  4. [Asking about nouns beyond proper nouns](#aksingaboutnouns)
+  5. [Testing](#testing)
 
  Perhaps write about
  1. [Coding Practices](#codingpractices) and write about testing as a sub set
 
+# <a name="motivation">Motivation #
 
+My goal was to get some experience with logical programming by extending Prolexa 
+to be able to do default reasoning as well as deal with negations.
+
+# <a name="method">Method #
+
+To learn what Prolexa can do and to avoid breaking existing functionality, I started off 
+by making a list of commands that are working both on my
+computer and via Google Colab. I decided to write a few very high level 'test cases' 
+in a new Colab Notebook that I could continue to use to ensure my changes worked.
+This notebook evolved over a few iterations into the Demo Notebook for the coursework.
+
+Once I had a high level idea about how I can interact with Prolexa, I wanted to learn 
+more about how
+each of these commands worked in Prolog. I used the Graphical Interface and debugger
+for SWI Prolog to step through each of the cases in the main
+predicate ```handle_utterance(SessionId,Utterance,Answer)``` in [prolexa.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa.pl):
+
+- A. Utterance is a sentence
+- B. Utterance is a question that can be answered
+- C. Utterance is a command that succeeds
+- D. None of the above
+
+That way I learned how the input string was translated into a Goal and how the outcome
+of such a goal was translated back into an answer. The translation happens in
+[prolexa_grammar.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_grammar.pl).
+while the Goal validation happens in [prolexa_engine.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_engine.pl)
 
 # <a name="defaultrules">Default Rules #
 
@@ -199,41 +229,6 @@ known_rule([Rule],SessionId):-
 - cannot add new words to the vocabulary
 - Doesn't deal with ' in negation properly. Expects doesnt and dont instead of doesn't  and don't should be easy to escape with '\\'
 - If there is a negated rule in the rulebase such as `not fly(X):-penguin(X)` and `penguin(opus):-true` when we ask Prolexa "Does opus fly". She answers "I don't think that's the case" due to not checking to proof the negative rules which she should do. So it's by coincidence that this query works not by design. However in my opinion Prolexa should answer definitive for such rules "No opus doesn't fly" and only answer "Sorry I don't think this is the case" when she cannot proof the query.
-
-# <a name="aksingaboutnouns">Asking about nouns beyond proper nouns #
-
-Example:
-
-"Do birds fly", "Are humans mortal"
-
-### Approach
-Before any changes the reply this was "I heard you say,  Do birds fly , could you rephrase that please?" meaning that the "utterance" itself wasn't understood. Questions like these should be handeled by:
-
-```
-% B. Utterance is a question that can be answered
-	; phrase(question(Query),UtteranceList),
-	  write_debug(query(Query)),
-	  prove_question(Query,SessionId,Answer) -> true
-```
-
-However question(Query) is handled by the grammar and there's no case for do question. Also it always assumes proper nouns. `question1(Q) --> [do], proper_noun(p,X),verb_phrase(p,X=>Q).`
-
-### How to test
-
-### Changes
-**prolexa_engine.pl:**
-
-
-**prolexa_grammar.pl:**
-
-
-**prolexa.pl:**
-
-
-
-### Limitations
-
-
 
 # <a name="testing">Testing #
 
