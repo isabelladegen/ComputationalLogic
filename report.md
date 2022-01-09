@@ -112,7 +112,7 @@ In this chapter I'm going to walk through the changes I've made in detail.
 
 To have some examples to work with I directly extended
 the [prolexa_grammar.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_grammar.pl)
-with the proper nouns:
+with the following proper nouns:
 
 ```
 proper_noun(s,tweety) --> [tweety].
@@ -128,7 +128,7 @@ pred(penguin, 1,[n/penguin]).
 pred(fly, 1,[v/fly]).
 ```
 
-## Handling default rules
+## Default rules
 
 First I looked at how to handle default rules directly added to the rule base
 
@@ -149,98 +149,90 @@ test('Explain why peep flies', 'peep is a bird; some birds fly; therefore peep f
 test('Tell me about peep', 'peep is a bird. peep flies')
 ```
 
-### Deciding what needs to be changed:
+### Required changes:
 
-The utterances are handled
-in [prolexa.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa.pl):
+Utterances are handled in 
+[prolexa.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa.pl).
 
-The question 'Does peep fly' is translated into a Prolog Query using the grammar. This Query then needs to be proved
-using the *prove_question/3* meta-interpreter from the engine:
+The question *'Does peep fly'* is translated into a Prolog query using the 
+[prolexa_grammar.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_grammar.pl). 
+The query is then proved by the *prove_question/3* meta-interpreter in 
+[prolexa_engine.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_engine.pl).
+These are the relevant lines of code:
 
 ```
+% prolex.pl -  handle_utterance
 phrase(question(Query),UtteranceList),
-...
 prove_question(Query,SessionId,Answer) -> true
-```
 
-The query if formed by:
-
-```
+% prolexa_grammar.pl:
 question(Q) --> qword,question1(Q).
-...
 question1(Q) --> [does],proper_noun(_,X),verb_phrase(_,X=>Q).
 ```
 
-Commands are translated into Prolog goals that then are proved or disproved by calling them:
+Commands are also translated into Prolog goals using the grammar before the Goal itself is called. 
+*'Explain why peep flies'* is translated into the goal `explain_question(Q,_,Answer)` and
+*'Tell me about peep'* is translated into the goal `all_answers(PN,Answer),Answer))`:
 
 ```
+% prolex.pl -  handle_utterance
 phrase(command(g(Goal,Answer)),UtteranceList),
-...
 call(Goal) -> true
-```
 
-The command 'Explain why peep flies' is translated into the Prolog goal `explain_question(Q,_,Answer)`
-in the grammar by
-
-```
+% prolexa_grammar.pl:
 command(g(explain_question(Q,_,Answer),Answer)) --> [explain,why],sentence1([(Q:-true)]).
-```
-
-The command 'Tell me about peep' is translated into the Prolog goal `all_answers(PN,Answer),Answer))`
-in the grammar by
-
-```
 command(g(all_answers(PN,Answer),Answer)) --> tellmeabout,proper_noun(s,PN).
 ```
 
-From this to pass the acceptance tests I needed to add some new rules, make changes to the grammar and the existing meta-interpreters.
-
 ### New Rules
-Changes to [prolexa.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa.pl).
-
-I needed a new syntax for rules to be able to distinguish between rules with no exception and default rules. I extended
-prolexa.pl with the following two rules:
+I needed a new syntax for rules to be able to distinguish between rules with no exception and default rules 
+and added the following rules
 
 ```
+% prolexa.pl:
 stored_rule(1,[(default(fly(X):-bird(X)))]).
 stored_rule(1,[(bird(peep):-true)]).
 ```
 
-The first rule is a new syntax for default rules, the second rule is using the existing syntax for rules without
+The first rule is the new syntax for default rules, the second rule is using the existing syntax for rules without
 exceptions.
 
-### Handling Default Rules in Language
-Changes to [prolexa_grammar.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_grammar.pl).
-
-To be able to understand and explain default rules using 'some' instead of 'every' I added the following determiner:
+### Handling Default Rules in language
+To be able to understand and explain default rules using 'some' instead of 'every' I added a new determiner
+to the grammar which allows the existing `sentence1` expression to understand default rules and translate
+queries into a default rules as well as default rules into language:
 
 ```
+% prolexa_grammar.pl:
+command(g(explain_question(Q,_,Answer),Answer)) --> [explain,why],sentence1([(Q:-true)]).
+
+sentence1(C) --> determiner(N,M1,M2,C),noun(N,M1),verb_phrase(N,M2).
+
 determiner(p,X=>B,X=>H,[(default(H:-B))]) --> [some].
 ```
 
-This allows default rules to be understood as a sentence and translated into a query Q:
-
+This now meant I could explain why a bird flies using *some* instead of
+*every*:
 ```
-sentence1(C) --> determiner(N,M1,M2,C),noun(N,M1),verb_phrase(N,M2).
-
-...
-
-command(g(explain_question(Q,_,Answer),Answer)) --> [explain,why],sentence1([(Q:-true)]).
+prolexa> "Explain why peep flies".
+*** utterance(Explain why peep flies)
+*** goal(explain_question(fly(peep),_49814,_49802))
+*** answer(peep is a bird; some birds fly; therefore peep flies)
+peep is a bird; some birds fly; therefore peep flies
 ```
-
 
 ### New meta-interpreter for Default Rules
-Changes to [prolexa_engine.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_engine.pl).
-
-The new default rule syntax required adding a new meta interpreter that could handle default rules. 
+The new default rule syntax required adding a new meta interpreter that can handle default rules. 
 The new **explain_rb/4** meta-interpreter is adapted from
 chapter [8.1 in Simply Logical](https://too.simply-logical.space/src/text/3_part_iii/8.1.html)
-to fit in with the existing Prolexa code. This new meta-interpreter now is called form **explain_question/3**:
+to fit in with the existing Prolexa code. This new meta-interpreter is now called form *explain_question/3*:
 `explain_rb(Query,Rulebase,[],Proof)` instead of `prove_rb(Query,Rulebase,[],Proof)`. It 
-is also called from **prove_question/3** for which it needs a 2 argument version: `explain_rb(Query,Rulebase)`
-instead of `prove_rb(Query,Rulebase)`.
+is also called from *prove_question/3* instead of `prove_rb(Query,Rulebase)` for questions. For this it needed 
+a 2 argument version `explain_rb(Query,Rulebase)` that simply calls the arity 4 version with an empty list
+and an anonymous variable for collecting the proves. Finally, *explain_rb/2* is also called from *prove_question/2* 
+which is called from *all_answers/2* to deal with 'Tell me about...' commands.
 
-In summary the new explain-rb() meta interpreter works as following:
+The new meta-interpreter *explain_rb/4* works as following:
 
 1. It first attempts to proof the goal using the existing `prove_rb()` meta-interpreter
 2. If that fails, it looks for a default rule `default(A:-B)` in the rule base using the existing `find_clause()`
@@ -250,6 +242,8 @@ In summary the new explain-rb() meta interpreter works as following:
 4. If that succeeds it then makes sure that A is not a contradiction
 
 ```
+% prolexa_engine.pl
+
 % meta-interpreter for rules and defaults from chapter 8.1
 explain_rb(true,_Rulebase,P, P):-!.
 explain_rb((A,B),Rulebase,P0,P):-!,
@@ -261,94 +255,10 @@ explain_rb(A,Rulebase,P0,P):-
   find_clause(default(A:-B),Rule,Rulebase),
   explain_rb(B,Rulebase,[p(A,Rule)|P0],P),
   not contradiction(A,Rulebase,P).  % A consistent with P
-  
-% check contradiction against rules, use simple proof to avoid circular contradition calls
-contradiction(not A,Rulebase,P):-!,
-	prove_s(A,Rulebase,P,_P1).
-contradiction(A,Rulebase,P):-
-	prove_s(not A,Rulebase,P,_P1).
 	
 % top-level version that ignores proof
 explain_rb(Q,RB):-
 	explain_rb(Q,RB,[],_P).
-```
-
-Explain prove_s vs prove_rb TODO
-
-
-
-### Handling negated rules
-
-### Acceptance Tests
-
-AC B. Utterance is a question that can be answered test('Does opus fly', 'Sorry, I don\'t think this is the case')
-C. Utterance is a command that succeeds test('Explain why opus doesnt fly', 'opus is a penguin; penguins dont fly;
-therefore opus doesnt fly')
-test('Explain why opus flies', 'Sorry, I don\'t think this is the case')
-test('Tell me about opus', 'opus is a bird. opus is a penguin. opus doesnt fly')
-test('Spill the beans', 'every human is mortal. peter is human. some birds fly. penguins dont fly. every penguin is a
-bird. opus is a penguin. peep is a bird')
-
-### Deciding what needs to be cahnged:
-
-### Rules:
-
-- `not flies(X):-penguin(X)`
-- `bird(X):-penguin(X)`
-- `penguin(opus):-true`
-
-### Grammar
-
-** More on Grammar and Negation**
-
-The solution I chose is to do the phrasing in the grammar. For the query "Tell me all" where I expect the
-rule `not fly(X):-penguin(X)` to be translated to
-"Penguins don't fly". This is handled by the following`verb_phrase(p,not(M)) --> [dont], iverb(p,M).` and works
-as `sentence1(C) --> determiner(N,M1,M2,C),noun(N,M1),verb_phrase(N,M2).`
-has M2 in the form of `not(X=>fly(X))` which then matches the verb_phrase for "don't" sentences.
-
-However the query for a proper noun e.g "Tell me all about Opus" matches
-`sentence1([(L:-true)]) --> proper_noun(N,X),verb_phrase(N,X=>L).` L being `not(fly(opus))`
-but m becomes `opus=>not(fly(opus))` which does no longer match `not(M)` clauses for verb_phrase. For this a new
-clause `sentence1([(not(L):-true)]) --> proper_noun(N,X),verb_phrase(N,not(X=>L)).` has been added which correctly deals
-with the not without propagating it to the verb_phrase avoiding them having to be duplicated.
-
-
-## Handling Adding default rules
-
-## Acceptance Tests
-AC A
-
-## Handling Adding negated rules 
-
-## Acceptance Tests
-AC A
-
-AC A
-
-
-
------------
-
-
-### Approach:
-
-Adding new meta interpreters `explain` for default rules and `contradiction`. Reusing the existing meta
-interpreter `prove_rb` to first attempt an explanation using a rule. If this fails it will attempt to find a default
-instead. See changes for more details.
-
-First checking that all the explanation using existing rules still work. Which they don't so I extended the grammar to
-deal with `not` in the head of a rule.
-
-Change the grammar to explain why a bird that's not a penguin flies with using *some* instead of
-*every* for default rules.
-
-```
-prolexa> "Explain why peep flies".
-*** utterance(Explain why peep flies)
-*** goal(explain_question(fly(peep),_49814,_49802))
-*** answer(peep is a bird; some birds fly; therefore peep flies)
-peep is a bird; some birds fly; therefore peep flies
 ```
 
 Ensure Tell me about proper noun also uses default rules as long as they are not a contradiction. To do so `all_answers`
@@ -362,62 +272,214 @@ prolexa> "Tell me all about peep".
 peep is a bird. peep flies
 ```
 
-Ensure not rules are also included in the "Tell me about <proper_noun>" queries. For "Tell me all about opus"  I'd
-expect Prolexa to answer "opus is a bird. opus is a penguin. opus doesn't fly". But instead she ignores
-the `stored_rule(1,[(not fly(X):-penguin(X))]).` due to `all_answers(Opus, Answers)` collecting all the known
-predicates `pred(P, 1, _)` and then attempting to prove each of them. However it's not attempting to proof  `not`
-predicates.
+
+## Negated rules
+
+To properly test default rules I needed to implement negation in rules.
+
+### Acceptance Tests
+
+I wanted to be able to ask negated questions as well has having Prolog use negations in explanations and answers.
+I defined the following acceptance tests for negated rules:
+
+- B. Utterance is a question that can be answered 
+```
+test('Does opus fly', 'Sorry, I don\'t think this is the case')
+```
+- C. Utterance is a command that succeeds 
+```
+test('Explain why opus doesnt fly', 'opus is a penguin; penguins dont fly; therefore opus doesnt fly')
+test('Explain why opus flies', 'Sorry, I don\'t think this is the case')
+test('Tell me about opus', 'opus is a bird. opus is a penguin. opus doesnt fly')
+```
+
+### Required Changes:
+
+Given that I was again dealing with questions and commands the changes were required in the same areas as for 
+default rules.
+
+### New Rules:
+
+For these new behaviours I directly added the following new rules about Opus as well as a not operator:
 
 ```
-% collect everything that can be proved about a particular Proper Noun
-all_answers(PN,Answer):-
-	findall(Q,(pred(P,1,_),Q=..[P,PN]),Queries), % collect known predicates from grammar
-	maplist(prove_question,Queries,Msg),
-	delete(Msg,"",Messages),
-	( Messages=[] -> atomic_list_concat(['I know nothing about',PN],' ',Answer)
-	; otherwise -> atomic_list_concat(Messages,". ",Answer)
+% prolexa.pl:
+:-op(900,fy,not).
+
+not flies(X):-penguin(X)
+bird(X):-penguin(X)
+penguin(opus):-true
+```
+
+### Handling negation in language
+
+I needed to extend the grammar to deal with not in rules by extending the verb_phrases and adding a new determiner:
+
+```
+% prolexa_grammar.pl
+sentence1([(not(L):-true)]) --> proper_noun(N,X),verb_phrase(N,not(X=>L)).
+
+verb_phrase(s,not(M)) --> [isnt],property(s,M). 
+verb_phrase(p,not(M)) --> [arent],property(p,M).
+verb_phrase(p,not(M)) --> [dont], iverb(p,M).
+verb_phrase(s,not(M)) --> [doesnt], iverb(p,M). %verb_phrases are in plural form for negations
+
+determiner(p,X=>B,not(X=>H),[(not(H):-B)]) --> [].
+```
+
+For the command *'Tell me all'* where I wanted the
+rule `not fly(X):-penguin(X)` to be translated to *'Penguins dont fly'*. This is handled by
+`verb_phrase(p,not(M)) --> [dont], iverb(p,M).` and worked
+as `sentence1(C) --> determiner(N,M1,M2,C),noun(N,M1),verb_phrase(N,M2).`
+has M2 in the form of `not(X=>fly(X))` which then matches the verb_phrase for 'dont' sentences.
+
+However, question about a proper noun such as *'Tell me all about Opus'* match
+`sentence1([(L:-true)]) --> proper_noun(N,X),verb_phrase(N,X=>L).` with L being `not(fly(opus))`
+but M becomes `opus=>not(fly(opus))` which does no longer match `not(M)` clauses for verb_phrase. To handle this I added 
+`sentence1([(not(L):-true)]) --> proper_noun(N,X),verb_phrase(N,not(X=>L)).` which correctly deals
+with the 'not' without propagating it to the verb_phrase.
+
+
+### Handling negated rules in the existing meta-interpreters
+
+Because I wanted Prolexa to include not rules in queries like *'Tell me about opus'* by listing the negated rules as well,
+I needed to make sure that the negated known rules were found as well. Previously, Prolexa ignored the
+the `stored_rule(1,[(not fly(X):-penguin(X))]).` due to `all_answers(Opus, Answers)` collecting all the known
+predicates `pred(P, 1, _)` and then attempting to prove each of them. However, Prolexa was not attempting to 
+proof `not` clauses. I decided to make this work explaining both the 'clause' and 'not clause' 
+in *prove_question/2* using an else-if, which perhaps is a bit of a procedural approach but required very few 
+code changes:
+
+```
+% prolexa_engine.pl
+prove_question(Query,Answer):-
+	findall(R,prolexa:stored_rule(_SessionId,R),Rulebase),
+	( explain_rb(Query,Rulebase) ->
+		transform(Query,Clauses),
+		phrase(sentence(Clauses),AnswerAtomList),
+		atomics_to_string(AnswerAtomList," ",Answer)
+	; explain_rb(not Query,Rulebase) ->
+		transform(not Query,Clauses),
+		phrase(sentence(Clauses),AnswerAtomList),
+		atomics_to_string(AnswerAtomList," ",Answer)
+	; Answer = ""
 	).
 ```
 
-There's two ways I thought about achieving it:
-
-1. extending the predicates list in the grammar with not fly &rarr; requires duplication of rules into predicates which
-   will make maintaining the rules and and keeping them consistent harder
-2. trying to proof both the predicates and not predicates &rarr; this is more work but once it's working it will be less
-   maintenance and easier to keep rules consistent, which should make teaching Prolexa things easier too
+The introduction of negated rules also required me to deal with contradictions. `fly(opus)` only fails if
+I properly check for contradictions so that only rules are found that don't contradict the knowledge base which 
+`fly(oppus)` does. *contradiction/3* gets called both in *explain_rb/4* and *prove_rb/4* which would result in a 
+circular call. To avoid this I introduced a simple *prove_s/4* version that does not check for contradictions.
 
 ```
-prolexa> "Tell me all about opus".
-*** utterance(Tell me all about opus)
-*** goal(all_answers(opus,_62220))
-*** answer(opus is a bird. opus is a penguin)
-opus is a bird. opus is a penguin
+% prolexa_engine.pl:
+
+% check contradiction against rules, use simple proof to avoid circular contradition calls
+contradiction(not A,Rulebase,P):-!,
+	prove_s(A,Rulebase,P,_P1).
+contradiction(A,Rulebase,P):-
+	prove_s(not A,Rulebase,P,_P1).
+
+% proof simple same as proof_rb but does not check for contradictions in proofs
+prove_s(true,_Rulebase,P,P):-!.
+prove_s((A,B),Rulebase,P0,P):-!,
+	find_clause((A:-C),Rule,Rulebase),
+	conj_append(C,B,D),
+  prove_s(D,Rulebase,[p((A,B),Rule)|P0],P).
+prove_s(A,Rulebase,P0,P):-
+  find_clause((A:-B),Rule,Rulebase),
+	prove_s(B,Rulebase,[p(A,Rule)|P0],P).
 ```
 
-Adding new default and normal rules: Statements like "All birds tweet" should add standard rule whereas statements
-like "Some birds tweet" should add a default rule as "some" clearly suggests exceptions to the rule. This is working if
-the verb is a pred() in the grammar and a stored rule like `fly(X):-bird(X)` is added but no new pred() can be added.
+## Adding default rules and negated rules
+I wanted to make sure default rules could also be added directly via queries as long as they
+used words and proper nouns already defined in the Prolexa grammar. Statements like *'All birds tweet'*
+should add standard rule whereas statements like *'Some birds tweet'* should add a default rule.
 
-I've added a new predicate in the grammar for singing. For birds this allows adding a default rules "Some birds sing".
-To test this crate the following rules:
+### Acceptance Tests
 
-1. "Some birds sing" &rarr; adds a stored rule `default(bird(X):-sing(X)`
-1. "Swans dont sing" &rarr; adds a stored rule `not sing(X):-swan(X)`
-1. "Swans are birds" &rarr; adds a stored rule `bird(X):-swan(X)`
-1. "Tweety is a swan." &rarr; adds a stored rule `swan(tweety):-true)`
-1. "Explain why peep sings" &rarr; "Peep is a bird. Some birds sing. Peep sings."
-1. "Does tweety sing." &rarr; "I dont think that's the case"
-1. "Tell me about tweety." &rarr; "Tweety is a swan. Tweety doesn't sing"
-1. "Explain why tweety doesn't sing." &rarr; "Tweety is a bird. Tweety is a swan. Swans don't sing. Tweety doesn't sing"
+The Acceptance tests for this were the following. Most of these worked out of the box with the above changes.
 
-TODO implement adding new pred TODO: "Every birds tweet", "Most birds tweet"
+- A. Utterance is a sentence
+```
+test('Some birds sing', 'I will remember that Some birds sing') #adds a new default: stored_rule(1,[(default(sing(X):-bird(X)))])
+test('Swans dont sing', 'I will remember that Swans dont sing') #adds a new rule: stored_rule(1,[(not sing(X):-swan(X))])
+test('All swans are birds', 'I will remember that All swans are birds') #adds a new rule: stored_rule(1,[(bird(X):-swan(X))])
+test('Tweety is a swan', 'I will remember that Tweety is a swan') #adds a new rule: stored_rule(1,[(swan(tweety):-true)])
 
-The grammar is used in both ways on the way in to translate human language into Prolog and on the way out to translate
-Prolog to human language.
+#Ensure that adding the rules twice does not add the rules twice - (Idempotence)
+test('Some birds sing', 'I already knew that Some birds sing') 
+test('Swans dont sing', 'I already knew that Swans dont sing') 
+test('All swans are birds', 'I already knew that All swans are birds')
+test('Tweety is a swan', 'I already knew that Tweety is a swan')
+```
+- B. Utterance is a question that can be answered
 
-My extensions have also implemented negative statements:
+```
+test('Does tweety sing', 'Sorry, I don\'t think this is the case')
+test('Does peep fly','peep flies')
+test('Is tweety a bird', 'tweety is a bird')
+test('Is opus a bird', 'opus is a bird')
+test('Is peep a bird', 'peep is a bird')
+```
 
-1. "Peter doesnt sing". &rarr; "I will remember that Peter doesnt sing" &rarr; adds a rule `not sing(Peter):-true`
+- C. Utterance is a command that succeeds
+
+```
+test('Tell me about tweety', 'tweety is a bird. tweety is a swan. tweety flies. tweety doesnt sing')
+test('Tell me about peep', 'peep is a bird. peep flies. peep sings')
+test('Explain why peep sings', 'peep is a bird; some birds sing; therefore peep sings')
+test('Explain why tweety flies', 'tweety is a swan; every swan is a bird; some birds fly; therefore tweety flies')
+test('Explain why tweety doesnt sing', 'tweety is a swan; swans dont sing; therefore tweety doesnt sing') 
+```
+
+### Required Changes:
+
+New rules are added when the utterance is interpreted as a sentence. This first checks if a rule is already
+known which will avoid adding in more than once:
+
+```
+% prolexa.pl
+% A. Utterance is a sentence
+	( phrase(sentence(Rule),UtteranceList),
+	  write_debug(rule(Rule)),
+	  ( known_rule(Rule,SessionId) -> % A1. It follows from known rules
+			atomic_list_concat(['I already knew that',Utterance],' ',Answer)
+	  ; otherwise -> % A2. It doesn't follow, so add to stored rules
+			assertz(prolexa:stored_rule(SessionId,Rule)),
+			atomic_list_concat(['I will remember that',Utterance],' ',Answer)
+	  )
+```
+
+Therefore, I needed to extend the*known_rule/2* meta-interpreter to also check if a default rules already existed. 
+I again used an `else if` to do so which is probably more of a procedural way of programming:
+
+```
+%prolexa-engine.pl
+known_rule([Rule],SessionId):-
+	findall(R,prolexa:stored_rule(SessionId,R),Rulebase),
+	( try((numbervars(Rule,0,_),
+	     Rule=(H:-B), %try normal rules
+	     add_body_to_rulebase(B,Rulebase,RB2),
+	     explain_rb(H,RB2)
+	   )) -> true
+		; try((numbervars(Rule,0,_),
+		     Rule=default(H:-B), %try default rules
+		     add_body_to_rulebase(B,Rulebase,RB2),
+		     explain_rb(H,RB2)
+		  ))
+	 ).
+```
+
+
+
+
+
+
+
+-----------
+
+
 
 ### How to test:
 
@@ -425,71 +487,10 @@ My extensions have also implemented negative statements:
 
 ### Changes:
 
-**prolexa_grammar.pl**
 
-- added opus and peep as a proper noun to help testing on the command line
-  ```
-  proper_noun(s,opus) --> [opus].
-  proper_noun(s,peep) --> [peep].
-  ```
-- extended grammar to deal with not in rules. Behaviour without change: *Tell me all.* &rarr; *I heard you say, tell me
-  all , could you rephrase that please?*
-  Should be: *Tell me all.* &rarr; *I heard you say, tell me all , could you rephrase that please?* &rarr; *every human
-  is mortal. peter is human. penguins dont fly. every bird flies. every penguin is a bird. opus is a penguin. peep is a
-  bird*
 
-    1. Added a new `determiner()` to deal with rules with `not` in the head:
-  ```
-  determiner(p,X=>B,not(X=>H),[(not(H):-B)]) --> [].
-  ```
-    2. Added new `verb_phrase()` to deal with negations both for singular and plural verbs and adjectives:
-  ```
-  verb_phrase(s,not(M)) --> [isnt],property(s,M). %TODO TEST
-  verb_phrase(p,not(M)) --> [arent],property(p,M). %TODO test
-  verb_phrase(p,not(M)) --> [dont], iverb(p,M).
-  verb_phrase(s,not(M)) --> [doesnt], iverb(s,M). %TODO TEST
-  ```
-- add a determiner for default rules that uses 'some' instead of 'every'
-  ```
-  determiner(p,X=>B,X=>H,[(default(H:-B))]) --> [some].
-  ```
 
 **prolexa_engine.pl**
-
-- added new meta interpreter for default rules `explain_rb(Query,Rulebase,[],Proof)`
-  ```
-  explain_rb(true,_Rulebase,P, P):-!.
-  explain_rb((A,B),Rulebase,P0,P):-!,
-    explain_rb(A,Rulebase,P0,P1),
-    explain_rb(B,Rulebase,P1,P).
-  explain_rb(A,Rulebase,P0,P):-
-    prove_rb(A,Rulebase,P0,P). % explain by rules only
-  explain_rb(A,Rulebase,P0,P):-
-  	find_clause(default(A:-B),Rule,Rulebase),
-    explain_rb(B,Rulebase,[p(A,Rule)|P0],P),
-    not contradiction(A,Rulebase,P).  % A consistent with P
-  ```
-    - this meta interpreter calls the existing `prove_rb` to first attempt an explanation via rules:
-      ```
-      explain_rb(A,Rulebase,P0,P):-
-        prove_rb(A,Rulebase,P0,P). % explain by rules only
-      ```
-    - then it looks for `default(A:-B)` clauses in the rulebase, `explains` B and uses the same `p(A,Rule)` to later
-      generate the message from the proof
-    - after that it checks that A is consistent with P
-    - Both `explain` and `contradiction` are similar to the ones in section 8.1 of the book but changed to use the
-      Rulebase and matching Prolexa's variable naming
-
-  The new meta interpreter gets called in `explain_question()` like this: `explain_rb(Query,Rulebase,[],Proof)` instead
-  of calling `prove_rb(Query,Rulebase,[],Proof)` like was done before.
-
-- added a top level version that can be used to `prove_questions` including default rules
-  ```
-  explain_rb(Q,RB):-
-  	explain_rb(Q,RB,[],_P).
-  ```
-  This gets called in both `prove_question(Query,Answer)` versions like this:  `explain_rb(Query,Rulebase)` instead
-  of `prove_rb(Query,Rulebase)`
 
 - ensure that default rules are not added twice by using `explain_rb` in known rules instead of directly `prove_rb` and
   check for normal rules as well as default rules (probably not the most elegant solution to use an if else)
@@ -515,7 +516,7 @@ known_rule([Rule],SessionId):-
 
 - added new rules for default reasoning
 
-<!-- TODO Put the changes here -->
+
 
 ### Limitations:
 
@@ -665,113 +666,7 @@ list of commands that are working:
 I then decided that it would take too long to manually run through these every time I'm making a change and decided to
 build a testing notebook that I can execute on colab where I can assert that existing and new functionality works.
 
-To ensure the tests can be run as many times as wanted they do reset the grammar in the cleanup function!
 
-There also seems to be some interesting differences between Google colab and running on my command line:
-
-**Google colab**
-
-  ```
-  print(query('tweety flies'))
-  print(query('tell me all'))
-  ```
-
-  ```
-  I already knew that tweety flies
-  every human is mortal. peter is human. tweety is a fly
-  ```
-
-*Note the wrong rule: tweety is a fly. On reseting the grammar it says:*
-
-  ```
-  every human is mortal. peter is human. tweety flies.
-  ```
-
-That's very strange, might explore if I got time
-
-**prolexa_cli on my mac (SAME CODE!)**
-
-  ```
-  prolexa> "Tweety flies".
-  *** utterance(Tweety flies)
-  *** rule([(fly(tweety):-true)])
-  *** answer(I will remember that Tweety flies)
-  I will remember that Tweety flies
-  *** utterance(Tell me all)
-  *** goal(all_rules(_77782))
-  *** answer(every human is mortal. peter is human. tweety flies)
-  every human is mortal. peter is human. tweety flies
-  ```
-
-Also interesting to know that I can only add rules about proper nouns. I cannot add rules about e.g birds
---------
-
-# some other fixes
-
-Due to how the grammar deals with verbs I've decided to use base forms for verbs
-
-TOOD:
-allow a user via colb to add verb Rules currently they would have to do it via:
-`peep fly` instead of `peep flies`
-
-1. If tall is defined as a verb this is how prolexa answers:
-
-  ```
-  prolexa> "Tell me all about peter".
-  *** utterance(Tell me all about peter)
-  *** goal(all_answers(peter,_48058))
-  *** answer(peter is human. peter is mortal. peter is a tall)
-  peter is human. peter is mortal. peter is a tall
-  prolexa> "Does peter tall".
-  *** utterance(Does peter tall)
-  *** query(tall(peter))
-  *** answer(peter is a tall)
-  peter is a tall
-  ```
-
-2. If tall is defined as an adjective this is how prolexa answers:
-
-  ```
-  "Tell me all about peter".
-  *** utterance(Tell me all about peter)
-  *** goal(all_answers(peter,_48066))
-  *** answer(peter is human. peter is mortal. peter is tall)
-  peter is human. peter is mortal. peter is tall
-  ```
-
-Does... questions work with verbs Is... questions work with adjectives However should be the same:
-'Is peter tall' -> Peter is tall
-'Does opus fly' -> Opus flies not Opus is a fly"
-
-Figured out that "Does opus fly" will be translated into fly(opus). If I formulate the rule as fly(opus) it works (TODO
-the not doesn't work so needs to be fixed too):
-
-Which I actually think it's better to keep the predicate in the base form of the verb so flies(opus) better as fly(opus)
-IMO
-
-```
-prolexa> "Tell me all about opus".
-*** utterance(Tell me all about opus)
-*** goal(all_answers(opus,_48058))
-*** answer(opus is a bird. opus is a penguin. opus flies)
-opus is a bird. opus is a penguin. opus flies
-prolexa> "tell me all about peep".
-*** utterance(tell me all about peep)
-*** goal(all_answers(peep,_51174))
-*** answer(peep is a bird. peep flies)
-peep is a bird. peep flies
-prolexa>
-```
-
-and it also works form
-
-```
-prolexa> "Does opus fly".
-*** utterance(Does opus fly)
-*** query(fly(opus))
-*** answer(opus flies)
-opus flies
-```
 
 Not:
 it finds `goal(all_answers(opus, Answers))`
@@ -916,81 +811,6 @@ What goes wrong for rule `not(fly(X)):-penguin(X)`:
     - this finds proof: `[ p(bird(peep),[(bird(peep):-true)]), default(fly(peep),[default((fly(A):-bird(A)))])
       ]`
 - `pstep2message` reusing the same p() for proving
-
-Explain is a method that already exists in SWI so I also called it explain_rb instead of explain to avoid error
-
-## Collecting Answers for nouns and proper noun_s2p
-
-It would be nice if `all_answers()` would not take the things to prove from the pred list in the grammar
-
-```
-% collect everything that can be proved about a particular Proper Noun
-all_answers(PN,Answer):-
-	findall(Q,(pred(P,1,_),Q=..[P,PN]),Queries), % collect known predicates from grammar
-	maplist(prove_question,Queries,Msg),
-	delete(Msg,"",Messages),
-	( Messages=[] -> atomic_list_concat(['I know nothing about',PN],' ',Answer)
-	; otherwise -> atomic_list_concat(Messages,". ",Answer)
-	).
-```
-
-But instead from the rules `all_rules` but with X assigned. This would also allow queries like
-"Are Humans mortal".
-
-```
-all_rules(Answer):-
-	findall(R,prolexa:stored_rule(_ID,R),Rules),
-	maplist(rule2message,Rules,Messages),
-	( Messages=[] -> Answer = "I know nothing"
-	; otherwise -> atomic_list_concat(Messages,". ",Answer)
-	).
-```
-
-First solution:
-
-```
-% collect everything that can be proved about a particular Proper Noun
-all_answers(PN,Answer):-
-	findall(Q,(pred(P,1,_),Q=..[P,PN]),Queries), % collect known predicates from grammar
-	maplist(prove_not_question,Queries,NotMsg),
-	maplist(prove_question,Queries,Msg),
-	delete(NotMsg,"",NotMsg1),
-	delete(Msg,"",Msg1),
-	append(Msg1, NotMsg1, Messages),
-	( Messages=[] -> atomic_list_concat(['I know nothing about',PN],' ',Answer)
-	; otherwise -> atomic_list_concat(Messages,". ",Answer)
-	).
-
-% two-argument version that can be used in maplist/3 (see all_answers/2)
-prove_not_question(Query,Answer):-
-	findall(R,prolexa:stored_rule(_SessionId,R),Rulebase),
-	( explain_rb(not Query,Rulebase) ->
-		transform(not Query,Clauses),
-		phrase(sentence(Clauses),AnswerAtomList),
-		atomics_to_string(AnswerAtomList," ",Answer)
-	; Answer = ""
-	).
-```
-
-It's not very neat as loads of duplication but it works. Second solution is to do the explanation for the negated
-predicate in an else_if clause directly in the `prove_question`
-which means `all_answers(PN,Answer)` does not need to get changed. I believe this is a less messy solution.
-
-```
-% two-argument version that can be used in maplist/3 (see all_answers/2)
-prove_question(Query,Answer):-
-  findall(R,prolexa:stored_rule(_SessionId,R),Rulebase),
-  ( explain_rb(Query,Rulebase) ->
-    transform(Query,Clauses),
-    phrase(sentence(Clauses),AnswerAtomList),
-    atomics_to_string(AnswerAtomList," ",Answer)
-  ; explain_rb(not Query,Rulebase) ->
-    transform(not Query,Clauses),
-    phrase(sentence(Clauses),AnswerAtomList),
-    atomics_to_string(AnswerAtomList," ",Answer)
-  ; Answer = ""
-  ).
-```
 
 
 
