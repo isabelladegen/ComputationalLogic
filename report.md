@@ -27,27 +27,30 @@ to be able to do default reasoning as well as deal with negations.
 
 # <a name="method">Method #
 
+I started off my work by forking the [assignment github repository](https://github.com/simply-logical/ComputationalLogic). 
+This way I could make my changes, while continuing to pull from the original repository if needed or indeed push back to it. 
+
 To learn what Prolexa can do and to avoid breaking existing functionality, I started off 
 by making a list of commands that are working both on my
-computer and via Google Colab. I decided to write a few very high level 'test cases' 
-in a new Colab Notebook that I could continue to use to ensure my changes keep working.
-This notebook evolved into the Demo Notebook for the coursework.
+computer and via Google Colab. I decided to keep track of these by writing few high level 'test cases' 
+in a new Colab Notebook. This notebook eventually evolved into the Demo Notebook for the coursework.
 
 Once I had a high level idea about how I can interact with Prolexa, I wanted to learn 
 more about how
-each of these commands were handled in Prolog. I used the Graphical Interface and debugger
-for SWI Prolog to step through each of the cases in the main
-predicate ```handle_utterance(SessionId,Utterance,Answer)``` in [prolexa.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa.pl):
+each of these commands were handled in Prolog. I used the SWI Prolog GUI and its debugger to step through each of the main cases in
+the predicate ```handle_utterance(SessionId,Utterance,Answer)``` defined in
+[prolexa.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa.pl):
 
 - A. Utterance is a sentence
 - B. Utterance is a question that can be answered
 - C. Utterance is a command that succeeds
 - D. None of the above
 
-That way I learned how the input string was translated into a Prolog Goal and how the outcome
-of such a Goal was translated back into a 'string' answer. The translation happens in
-[prolexa_grammar.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_grammar.pl).
-while the Goal validation happens in [prolexa_engine.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_engine.pl)
+That way I learned how the input string is translated into a Prolog Goal and how the outcome
+of such a Goal was translated back into a 'string' answer. Both ways, this translation happens mainly in
+[prolexa_grammar.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_grammar.pl),
+while the proving of the Goal happens in 
+[prolexa_engine.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_engine.pl).
 
 Now I was ready to start changing these three files. I took a top down approach starting by defining what the user
 would ask Prolexa and what they would expect as response to their question. I could use my Colab notebook to 
@@ -56,6 +59,28 @@ my 'Acceptance tests' for the new behaviour. For the code changes to Prolog I co
 to use the debugger to verify that the query was handled as expected. All my changes were done in small cycles of:
 add a failing test &rarr; change the code to fix it &rarr; run the tests to verify it was working &rarr; check-in and start 
 with the next new failing test.
+
+I noticed early on a discrepancy between directly querying Prolexa via the commandline and querying it via the
+Colab notebook which was using Prolexa plus. Prolexa plus is using Python to extend the vocabulary on the fly. While this is 
+useful for queries of type 'A. Utterance is a sentence', Prolexa plus is also extending the grammar for queries of type
+'B. Utterance is a question that can be answered' and 'C. Utterance is a command that succeeds'. This results in
+unexpected words being added to the vocabulary which then result in strange answers. 
+For example the query 'Explain why tweety tweets' adds the following *pred* functors
+to the grammar:
+```
+  pred(tweet, 1,[v/tweet,n/tweet]).
+  pred(doe, 1,[v/doe]).
+  pred(bird, 1,[n/bird]).
+  pred(is, 1,[v/is]).
+  pred(tweety, 1,[a/tweety,n/tweety]).
+  pred(explain, 1,[v/explain]).
+```
+Note that amongst other unexpected additions *tweet* is added as noun as well as a verb which then results in the unexpected
+answers to the query 'Explain why tweety tweets' &rarr; *tweety is a bird; every bird is **a tweet**; therefore tweety is **a tweet*** 
+instead of what I expected *tweety is a bird; every bird **tweets**; therefore tweety **tweets***. For this reason I decided to directly 
+query Prolexa. The Colab Notebook I used to debug Prolexa Plus has more examples of different grammar additions and can be found here:
+[Testing_Prolexa_Plus_Notebook.ipynb](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/Testing_Prolexa_Plus_Notebook.ipynb) 
+
 
 # <a name="defaultrules">Default Rules #
 
