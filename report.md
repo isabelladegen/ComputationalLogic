@@ -3,12 +3,18 @@
 ### Author
 [Isabella Degen](https://github.com/isabelladegen)
 
+[//]: # (How to use this report)
+- The colab notebook walks you through what has been changed and what you can do on a high level
+- The report goes into more details about the changes....
+
 ### Contents
   1. [Motivation](#motivation)
   2. [Method](#method)
 
   3. [Default Rules](#defaultrules)
   4. [Asking about nouns beyond proper nouns](#aksingaboutnouns)
+
+Appendix?
   5. [Testing](#testing)
 
  Perhaps write about
@@ -16,7 +22,7 @@
 
 # <a name="motivation">Motivation #
 
-My goal was to get some experience with logical programming by extending Prolexa 
+My goal for this coursework was to get some experience with logical programming by extending Prolexa 
 to be able to do default reasoning as well as deal with negations.
 
 # <a name="method">Method #
@@ -24,12 +30,12 @@ to be able to do default reasoning as well as deal with negations.
 To learn what Prolexa can do and to avoid breaking existing functionality, I started off 
 by making a list of commands that are working both on my
 computer and via Google Colab. I decided to write a few very high level 'test cases' 
-in a new Colab Notebook that I could continue to use to ensure my changes worked.
-This notebook evolved over a few iterations into the Demo Notebook for the coursework.
+in a new Colab Notebook that I could continue to use to ensure my changes keep working.
+This notebook evolved into the Demo Notebook for the coursework.
 
 Once I had a high level idea about how I can interact with Prolexa, I wanted to learn 
 more about how
-each of these commands worked in Prolog. I used the Graphical Interface and debugger
+each of these commands were handled in Prolog. I used the Graphical Interface and debugger
 for SWI Prolog to step through each of the cases in the main
 predicate ```handle_utterance(SessionId,Utterance,Answer)``` in [prolexa.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa.pl):
 
@@ -38,10 +44,18 @@ predicate ```handle_utterance(SessionId,Utterance,Answer)``` in [prolexa.pl](htt
 - C. Utterance is a command that succeeds
 - D. None of the above
 
-That way I learned how the input string was translated into a Goal and how the outcome
-of such a goal was translated back into an answer. The translation happens in
+That way I learned how the input string was translated into a Prolog Goal and how the outcome
+of such a Goal was translated back into a 'string' answer. The translation happens in
 [prolexa_grammar.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_grammar.pl).
 while the Goal validation happens in [prolexa_engine.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_engine.pl)
+
+Now I was ready to start changing these three files. I took a top down approach starting by defining what the user
+would ask Prolexa and what they would expect as response to their question. I could use my Colab notebook to 
+specify new test for the new functionality in the same way: ```test('new query', 'expected answer')```. These tests were 
+my 'Acceptance tests' for the new behaviour. For the code changes to Prolog I continued
+to use the debugger to verify that the query was handled as expected. All my changes were done in small cycles of:
+add a failing test &rarr; change the code to fix it &rarr; run the tests to verify it was working &rarr; check-in and start 
+with the next new failing test.
 
 # <a name="defaultrules">Default Rules #
 
