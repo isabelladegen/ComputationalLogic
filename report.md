@@ -1,27 +1,25 @@
-# Report for 2021 Assignment Computational Logic for Artificial Intelligence COMSM0022
+# Coursework Report for Computation Logic for Artificial Intelligence
 
-### Author
+### Author [Isabella Degen](https://github.com/isabelladegen) 
 
-[Isabella Degen](https://github.com/isabelladegen)
+This is the report for the 2021 Assignment Computational Logic for Artificial Intelligence COMSM0022.
 
-[//]: # (How to use this report)
+This report goes into details about how I extended Prolexa. It's accompanied by
+the [Colab Demo Notebook](https://colab.research.google.com/github/isabelladegen/ComputationalLogic/blob/prolexa-plus/Demo_Notebook.ipynb)
+that demonstrates these changes and allows playing with this extended version of Prolexa.
 
-- The colab notebook walks you through what has been changed and what you can do on a high level
-- The report goes into more details about the changes....
+All code can be found on [Github](https://github.com/isabelladegen/ComputationalLogic)
 
 ### Contents
 
 1. [Motivation](#motivation)
 2. [Method](#method)
 3. [Implementation](#implementation)
+   1. [Default rules](#defaultrules)
+   2. [Negated rules](#negatedrules)
+   3. [Adding new default rules and negated rules](#addingnewdefaultrulesandnegatedrules)
+4. [Limitations](#limitations)
 
-Appendix?
-
-5. [Testing](#testing)
-
-Perhaps write about
-
-1. [Coding Practices](#codingpractices) and write about testing as a sub set
 
 # <a name="motivation">Motivation #
 
@@ -128,7 +126,7 @@ pred(penguin, 1,[n/penguin]).
 pred(fly, 1,[v/fly]).
 ```
 
-## Default rules
+## Default rules <a name="defaultrules">
 
 First I looked at how to handle default rules directly added to the rule base
 
@@ -273,7 +271,7 @@ peep is a bird. peep flies
 ```
 
 
-## Negated rules
+## Negated rules <a name="negatedrules">
 
 To properly test default rules I needed to implement negation in rules.
 
@@ -391,7 +389,7 @@ prove_s(A,Rulebase,P0,P):-
 	prove_s(B,Rulebase,[p(A,Rule)|P0],P).
 ```
 
-## Adding default rules and negated rules
+## Adding new default rules and negated rules <a name="addingnewdefaultrulesandnegatedrules">
 I wanted to make sure default rules could also be added directly via queries as long as they
 used words and proper nouns already defined in the Prolexa grammar. Statements like *'All birds tweet'*
 should add standard rule whereas statements like *'Some birds tweet'* should add a default rule.
@@ -471,347 +469,16 @@ known_rule([Rule],SessionId):-
 	 ).
 ```
 
-
-
-
-
-
-
------------
-
-
-
-### How to test:
-
-- <instruction on what can be done in colab>
-
-### Changes:
-
-
-
-
-**prolexa_engine.pl**
-
-- ensure that default rules are not added twice by using `explain_rb` in known rules instead of directly `prove_rb` and
-  check for normal rules as well as default rules (probably not the most elegant solution to use an if else)
-
-```
-%%% test if a rule can be deduced from stored rules %%%
-known_rule([Rule],SessionId):-
-	findall(R,prolexa:stored_rule(SessionId,R),Rulebase),
-	( try((numbervars(Rule,0,_),
-	     Rule=(H:-B), %try normal rules
-	     add_body_to_rulebase(B,Rulebase,RB2),
-	     explain_rb(H,RB2)
-	   )) -> true
-		; try((numbervars(Rule,0,_),
-		     Rule=default(H:-B), %try default rules
-		     add_body_to_rulebase(B,Rulebase,RB2),
-		     explain_rb(H,RB2)
-		  ))
-	 ).
-```
-
-**prolexa.pl**
-
-- added new rules for default reasoning
-
-
-
-### Limitations:
-
-- can only query about proper nouns "Does tweety fly" not "Do birds fly"
-- cannot add new words to the vocabulary
-- Doesn't deal with ' in negation properly. Expects doesnt and dont instead of doesn't and don't should be easy to
-  escape with '\\'
-- If there is a negated rule in the rulebase such as `not fly(X):-penguin(X)` and `penguin(opus):-true` when we ask
-  Prolexa "Does opus fly". She answers "I don't think that's the case" due to not checking to proof the negative rules
-  which she should do. So it's by coincidence that this query works not by design. However in my opinion Prolexa should
-  answer definitive for such rules "No opus doesn't fly" and only answer "Sorry I don't think this is the case" when she
-  cannot proof the query.
-
-# <a name="testing">Testing #
-
-To learn what Prolexa can do and to avoid breaking existing functionality with my changes, I started off by making a
-list of commands that are working:
-
-**Tell me about...**
-
-- `"tell me about unknownnoun".` - none existing noun &rarr;
-
-  ```
-  *** utterance(tell me about unknownnoun)
-  *** answer(I heard you say,  tell me about unknownnoun , could you rephrase that please?)
-  I heard you say,  tell me about unknownnoun , could you rephrase that please?
-  ```
-
-- `"tell me about tweety".` - existing noun with no knowledge &rarr;
-  ```
-  *** utterance(tell me about tweety)
-  *** goal(all_answers(tweety,_8290))
-  *** answer(I know nothing about tweety)
-  I know nothing about tweety
-  ```
-
-- `"tell me about peter".` - existing noun with knowledge &rarr;
-  ```
-  *** utterance(tell me about peter)
-  *** goal(all_answers(peter,_2548))
-  *** answer(peter is human. peter is mortal)
-  peter is human. peter is mortal
-  ```
-
-**Is ...**
-
-- `"Is unknownnoun mortal".` - existing noun without rule rule &rarr;
-  ```
-  *** utterance(Is unknownnoun mortal)
-  *** answer(I heard you say,  Is unknownnoun mortal , could you rephrase that please?)
-  I heard you say,  Is unknownnoun mortal , could you rephrase that please?
-  ```
-
-- `"Is tweety a bird".` - existing noun without rule rule &rarr;
-  ```
-  *** utterance(Is tweety a bird)
-  *** query(bird(tweety))
-  *** answer(Sorry, I don't think this is the case)
-  Sorry, I don't think this is the case
-  ```
-
-- `"Is peter mortal".` - existing noun and rule &rarr;
-  ```
-  *** utterance(Is peter mortal)
-  *** query(mortal(peter))
-  *** answer(peter is mortal)
-  peter is mortal
-  ```
-
-**Explain...**
-
-- `"Explain why unknownnoun is mortal".` - none existing noun &rarr;
-  ```
-  *** utterance(Explain why unkownnoun is mortal)
-  *** answer(I heard you say,  Explain why unkownnoun is mortal , could you rephrase that please?)
-  I heard you say,  Explain why unkownnoun is mortal , could you rephrase that please?
-  ```
-
-- `"Explain why peter is a mortal".` - existing noun that's explainable &rarr;
-  ```
-  *** utterance(Explain why peter is a mortal)
-  *** goal(explain_question(mortal(peter),_5252,_5240))
-  *** answer(peter is human; every human is mortal; therefore peter is mortal)
-  peter is human; every human is mortal; therefore peter is mortal
-  ```
-
-- `"Explain why tweety is a bird".` - existing noun that's not explainable &rarr;
-  ```
-  *** utterance(Explain why tweety is a bird)
-  *** goal(explain_question(bird(tweety),_4470,_4458))
-  *** answer(Sorry, I don't think this is the case)
-  Sorry, I don't think this is the case
-  ```
-
-**Add a new rule**
-
-- `"Unknownnoun is mortal".` - none existing noun &rarr; **this does not work on the cli comand line but it does work
-  with ProlexaPlus**
-  ```
-  *** utterance(Unknownnoun is mortal)
-  *** answer(I heard you say,  Unknownnoun is mortal , could you rephrase that please?)
-  I heard you say,  Unknownnoun is mortal , could you rephrase that please?
-  ```
-
-- `"Peter is mortal".` - already existing rule &rarr;
-  ```
-  *** utterance(Peter is mortal)
-  *** rule([(mortal(peter):-true)])
-  *** answer(I already knew that Peter is mortal)
-  I already knew that Peter is mortal
-  ```
-
-- `"Tweety is a bird".` - new rule &rarr;
-  ```
-  *** utterance(Tweety is a bird)
-  *** rule([(bird(tweety):-true)])
-  *** answer(I will remember that Tweety is a bird)
-  I will remember that Tweety is a bird
-  ```
-
-**Things about the grammar**
-
-- It can do simple singular and plural even in self added rules:
-  ```
-  prolexa> "Tweety flies".
-  *** utterance(Tweety flies)
-  *** rule([(fly(tweety):-true)])
-  *** answer(I will remember that Tweety flies)
-  I will remember that Tweety flies
-
-  prolexa> "Does Tweety fly".
-  *** utterance(Does Tweety fly)
-  *** query(fly(tweety))
-  *** answer(tweety flies)
-  tweety flies
-  ```
-
-  also with grammatical errors in the query:
-  ```
-  prolexa> "Does tweety flies".
-  *** utterance(Does tweety flies)
-  *** query(fly(tweety))
-  *** answer(tweety flies)
-  tweety flies
-  ```
-
-I then decided that it would take too long to manually run through these every time I'm making a change and decided to
-build a testing notebook that I can execute on colab where I can assert that existing and new functionality works.
-
-
-
-Not:
-it finds `goal(all_answers(opus, Answers))`
-
-- this finds all the predicates and proves each
-  query [human(opus), mortal(opus), penguin(opus), sparrow(opus), fly(opus)] &rarr; fly(opus) should fail but it doesn't
-  check for contradictions
-
-**Solution**
-
-Add a contradiction check for rules so that only rules are added that are not contradicted
-
-```
-prove_rb(A,Rulebase,P0,P):-
-  find_clause((A:-B),Rule,Rulebase),
-	prove_rb(B,Rulebase,[p(A,Rule)|P0],P),
-	not contradiction(A,Rulebase,P). % A consistent with P
-```
-
-For the contradiction check use a simple prove instead of prove_rb to avoid circular contradiction checks
-
-```
-prove_s(A,Rulebase,P0,P):-
-  find_clause((A:-B),Rule,Rulebase),
-	prove_s(B,Rulebase,[p(A,Rule)|P0],P).
-```
-
-With the new contradiction check the output is correct and Prolexa can now handle rules with contradictions by leaving
-them out:
-
-```
-prolexa> "tell me all about opus".
-*** utterance(tell me all about opus)
-*** goal(all_answers(opus,_58646))
-*** answer(opus is a bird. opus is a penguin)
-opus is a bird. opus is a penguin
-prolexa> "tell me all about peep".
-*** utterance(tell me all about peep)
-*** goal(all_answers(peep,_60810))
-*** answer(peep is a bird. peep flies)
-peep is a bird. peep flies
-```
-
-And also:
-
-```
-prolexa> "Does opus fly".
-*** utterance(Does opus fly)
-*** query(fly(opus))
-*** answer(Sorry, I don't think this is the case)
-Sorry, I don't think this is the case
-prolexa> "Does peep fly".
-*** utterance(Does peep fly)
-*** query(fly(peep))
-*** answer(peep flies)
-peep flies
-```
-
-Test that everything still works apart from the new default rules
-
-Now for the explain the result is:
-
-```
-prolexa> "Explain why opus flies".
-*** utterance(Explain why opus flies)
-*** goal(explain_question(fly(opus),_64504,_64492))
-*** answer(Sorry, I don't think this is the case)
-Sorry, I don't think this is the case
-prolexa> "Explain why peep flies".
-*** utterance(Explain why peep flies)
-*** goal(explain_question(fly(peep),_65306,_65294))
-*** answer(peep is a bird; every bird flies; therefore peep flies)
-peep is a bird; every bird flies; therefore peep flies
-```
-
-But for a normal bird like peep it should be:
-`peep is a bird; most birds fly except penguins; peep is not a penguin, therefore peep flies`
-
-And for an abnormal bird like opus it should be:
-`opus is a bird; most birds fly execept pengings; opus is a penguin`
-
--------
-
-## Details on 'Tell me all'. &rarr; all_rules()##
-
-What I want instead is: [Penguins, dont, fly]
-
-1. determiner not to add every and map to Plural
-2. verb_phrase not to stumble over that there's no predicate &rarr; simple solution would be to add a predicate for not(
-   fly(X)) other solution would be to use the not to add a dont and then remove the not and test the verb_phrase on just
-   fly(X)
-
-- Calls Goal `all_rules(Answer)`
-    - findsall stored_rules &rarr; Rules
-
-  Then for every rule:
-    - maplist Goals rule2message, List1=Rules, List2 (where the message will be going)
-        - maplist(Rules, List2, rule2message)
-            - calls Goal rule2message with first item of the Rules and List 2 `rule2message(Rule, Message)`
-                - calls `phrase(sentence1(Rule), Sentence)` &rarr; C in sentence one is the Rule (See grammar)
-                    - calls `determiner` &rarr; N=s (cause it was the first), M1=body of rule, M2=head of rule, Message
-                      now has 'every' added
-                    - calls `noun(N, M)` &rarr; N is the numerous (Singular/Plural), M is the term e.g human
-                        - adds the noun to message [every M1] (M1 being the body) and calls `pred2gr(_P, 1, n/Noun, M1)`
-                            - pred2gr &rarr; P = _P, 1 ignore its session id, C/W is e.g n/Noun, X=>Lit with M1 (human):
-                                1. pred(P, 1, L) &rarr; all new variables &rarr; that goes through each `pred(..)`
-                                   clause in the Grammar: pred(P,1,L) &rarr; pred(fly,1,[v/fly])  &rarr P is the
-                                   predicate
-                                2. member(C/W,L) &rarr; member(n/Noun, [v/fly]) passes if C/W is element of L
-                                3. Lit=..[P,X] &rarr; P=body=W, C=n (from C/W) -> not too sure
-                    - calls `verb_phrase(N, M2)` &rarr; M2 = head, N=numerous from determiner
-                      e.g `verb_phrase(s, mortal)`
-                        - uses is if N is s, are if N is p, calls `property(s,M)` with M being head
-                            - adjective() calls `pred2gr(_P, 1, a/Adj, M2)`
-                              **sentence1(C) matches to [noun, adjective] or [noun, noun] or [noun, iverb]**
-                              Singular or plural get's defined in the determiner and is used from then on
-                    - calls atomics_to_string(Sentence, " ", Message) &rarr;
-                      atomics_to_string([every, human, is, mortal], " ", Message) $rarr; Message="every human is mortal"
-
-What goes wrong for rule `not(fly(X)):-penguin(X)`:
-
-- `phrase(sentence1([not(fly(X)):-penguin(X)]), Sentence)`
-    - `determiner(N,M1,M2,C)` &rarr; `determiner(N,M1,M2,[not(fly(X)):-penguin(X)])`
-        - N=s, M1=B=penguin(X), M2=H=not(fly(X)), Sentence=[every]
-        - **starts the sentence wrong for negation**
-    - `noun(N,M1)` &rarr; `noun(s,X=>penguin(X))`
-        - Noun = penguin
-        - **wrongly mapped to signular**
-    - `verb_phrase(N, M2)` &rarr; `verb_phrase(s, X=not(fly(X)))`
-        - adds [is]
-        - **cannot find a predicate not(fly(X))**
-
---------
-
-## Tell me all about peep. &rarr; all_answers(peep, Answers)
-
-`all_answers()` uses `prove_question()` which uses `prove_rb()` to proof all the answers the first one finds.
-
-## Explain why peep flies. &rarr;
-
-- `all_answers()` uses `explain_question()` which uses the new `explain_rb()` meta interpreter
-    - this finds proof: `[ p(bird(peep),[(bird(peep):-true)]), default(fly(peep),[default((fly(A):-bird(A)))])
-      ]`
-- `pstep2message` reusing the same p() for proving
-
-
-
-
+# <a name="limitations">Limitations #
+
+Limitations of my implementation that I'm aware of are:
+
+- Negated queries need to be done without using an  **'**. This means using doesnt and dont instead of doesn't and don't due 
+to not escaping ' with '\\'
+- New words cannot be added to the vocabulary
+- Can only use proper nouns to query *'Does tweety fly'* not *'Do birds fly'*
+- If there is a negated rule in the rulebase such as `not fly(X):-penguin(X)` and `penguin(opus):-true` and we ask
+  Prolexa *'Does opus fly'*. She answers *'I don't think that's the case'* due to not checking to proof the negative rules
+  which she should do. So it's by coincidence that this query works not by design. Ideally, Prolexa should
+  answer definitive for such queries with *'No opus doesn't fly'* and only answer with *'Sorry I don't think this is the case'*
+when she cannot proof the query.
