@@ -4,7 +4,7 @@
 Links to report and Colab demo:
 
 [![Report](https://img.shields.io/badge/report-Isabella-blue)](report.md)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/isabelladegen/ComputationalLogic/blob/prolexa-plus/Demo_Notebook.ipynb)
+[![Colab Demo Notebook](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/isabelladegen/ComputationalLogic/blob/prolexa-plus/Demo_Notebook.ipynb)
 
 -------
 
