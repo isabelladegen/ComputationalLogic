@@ -1,11 +1,7 @@
-# MacOS files
-*.DS_Store
-.idea/
-
-# Python
-*__pycache__
-
-# Prolexa Plus
-prolexa/prolexa.pl
-prolexa/knowledge_store.pl
-prolexa.egg-info
+logs/*
+!.gitkeep
+node_modules/
+app/lib/
+tmp
+.DS_Store
+.idea
