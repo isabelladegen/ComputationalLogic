@@ -10,9 +10,8 @@
 ### Contents
   1. [Motivation](#motivation)
   2. [Method](#method)
+  3. [Implementation](#implementation)
 
-  3. [Default Rules](#defaultrules)
-  4. [Asking about nouns beyond proper nouns](#aksingaboutnouns)
 
 Appendix?
   5. [Testing](#testing)
@@ -23,7 +22,19 @@ Appendix?
 # <a name="motivation">Motivation #
 
 My goal for this coursework was to get some experience with logical programming by extending Prolexa 
-to be able to do default reasoning as well as deal with negations.
+to be able to do default reasoning as well as deal with negations. 
+
+In summary the following new interactions are now possible:
+- Adding rules that have exception (Default Rules):```'some birds fly'``` &rarr; 'I will remember that some birds fly'
+- Adding negated rules: ```'Penguins dont fly'``` &rarr; 'I will remember that Penguins dont fly'
+- Report about default rules: ```'Tell me all'``` &rarr; 'Some birds fly' instead of 'Every bird flies'
+- Report about negated rules: ```'Tell me all'``` &rarr; 'Penguins dont fly'
+- Report default rules and negations in questions about proper nouns: ```'Tell me about Peep'``` &rarr; 'peep is a bird. peep flies' and
+  ```'Tell me about Opus'``` &rarr; 'opus is a bird. opus is a penguin. opus doesnt fly'
+- Queries about proper nouns: ```'Does Peep fly'``` &rarr; 'Peep flies' and ```'Does Opus fly'``` &rarr;
+  'Sorry, I don't think this is the case'
+- Explain default rules: ```'Explain why peep flies'``` &rarr; 'peep is a bird; some birds fly; therefore peep flies' and
+  ```'Explain why opus doesnt fly'``` %&rarr; 'opus is a penguin; penguins dont fly; therefore opus doesnt fly'
 
 # <a name="method">Method #
 
@@ -33,7 +44,9 @@ This way I could make my changes, while continuing to pull from the original rep
 To learn what Prolexa can do and to avoid breaking existing functionality, I started off 
 by making a list of commands that are working both on my
 computer and via Google Colab. I decided to keep track of these by writing few high level 'test cases' 
-in a new Colab Notebook. This notebook eventually evolved into the Demo Notebook for the coursework.
+in a new Colab Notebook. This notebook eventually evolved into the 
+[Demo Notebook](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/Demo_Notebook.ipynb) for the coursework.
+This Notebook gives a good walk through about what can now be done with Prolexa.
 
 Once I had a high level idea about how I can interact with Prolexa, I wanted to learn 
 more about how
@@ -58,14 +71,16 @@ specify new test for the new functionality in the same way: ```test('new query',
 my 'Acceptance tests' for the new behaviour. For the code changes to Prolog I continued
 to use the debugger to verify that the query was handled as expected. All my changes were done in small cycles of:
 add a failing test &rarr; change the code to fix it &rarr; run the tests to verify it was working &rarr; check-in and start 
-with the next new failing test.
+with the next new failing test. I started off by adding default rules and negated rules directly to Prolog and ensuring 
+that the cases *B. Utterance is a question that can be answered* and *C. Utterance is a command that succeeds* worked.
+Then I made sure that default rules and negated rules could also be added via *A. Utterance is a sentence*.
 
 I noticed early on a discrepancy between directly querying Prolexa via the commandline and querying it via the
 Colab notebook which was using Prolexa plus. Prolexa plus is using Python to extend the vocabulary on the fly. While this is 
 useful for queries of type 'A. Utterance is a sentence', Prolexa plus is also extending the grammar for queries of type
 'B. Utterance is a question that can be answered' and 'C. Utterance is a command that succeeds'. This results in
 unexpected words being added to the vocabulary which then result in strange answers. 
-For example the query 'Explain why tweety tweets' adds the following *pred* functors
+For example the query *'Explain why tweety tweets'* adds the following *pred* functors
 to the grammar:
 ```
   pred(tweet, 1,[v/tweet,n/tweet]).
@@ -76,17 +91,95 @@ to the grammar:
   pred(explain, 1,[v/explain]).
 ```
 Note that amongst other unexpected additions *tweet* is added as noun as well as a verb which then results in the unexpected
-answers to the query 'Explain why tweety tweets' &rarr; *tweety is a bird; every bird is **a tweet**; therefore tweety is **a tweet*** 
+answers to the query *'Explain why tweety tweets'* &rarr; *tweety is a bird; every bird is **a tweet**; therefore tweety is **a tweet*** 
 instead of what I expected *tweety is a bird; every bird **tweets**; therefore tweety **tweets***. For this reason I decided to directly 
 query Prolexa. The Colab Notebook I used to debug Prolexa Plus has more examples of different grammar additions and can be found here:
 [Testing_Prolexa_Plus_Notebook.ipynb](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/Testing_Prolexa_Plus_Notebook.ipynb) 
 
 
-# <a name="defaultrules">Default Rules #
+# <a name="implementation">Implementation #
 
-Example:
+In this chapter I'm going to walk through the changes I've made in detail. 
 
-`Most birds fly except penguins. Tweety is a bird. Therefore, assuming Tweety is not a penguin, Tweety flies.
+To have some examples to work with I directly extended
+the [prolexa_grammar.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_grammar.pl) 
+with the proper nouns:
+```
+proper_noun(s,tweety) --> [tweety].
+proper_noun(s,opus) --> [opus].
+proper_noun(s,peep) --> [peep].
+```
+
+And the vocabulary with the following words:
+```
+pred(bird, 1,[n/bird]).
+pred(penguin, 1,[n/penguin]).
+pred(fly, 1,[v/fly]).
+```
+
+**Rules:** see [prolexa.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa.pl)
+
+ ```
+%some intial stored rules
+stored_rule(1,[(mortal(X):-human(X))]).
+stored_rule(1,[(human(peter):-true)]).
+%additional rules for default reasoning
+stored_rule(1,[(default(fly(X):-bird(X)))]).
+stored_rule(1,[(not fly(X):-penguin(X))]).
+stored_rule(1,[(bird(X):-penguin(X))]).
+stored_rule(1,[(penguin(opus):-true)]).
+stored_rule(1,[(bird(peep):-true)]).
+  ```
+
+### Handling default rules added to the knowledgebase
+
+**Acceptance Tests:**
+I defined the acceptance tests for the simplest case of handling default rules are as following:
+- B. Utterance is a question that can be answered
+```
+test('Does peep fly','peep flies')
+```
+- C. Utterance is a command that succeeds
+```
+test('Explain why peep flies', 'peep is a bird; some birds fly; therefore peep flies')
+test('Tell me about peep', 'peep is a bird. peep flies')
+```
+
+**New Rules and handling them:**
+I needed a new syntax for rules to be able to distinguish between rules with no exception and default rules. I extended
+[prolexa.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa.pl) with the following
+two rules:
+```
+stored_rule(1,[(default(fly(X):-bird(X)))]).
+stored_rule(1,[(bird(peep):-true)]).
+```
+The first rule is a new syntax for default rules, the second rule is using the existing syntax for rules without exceptions.
+
+The new default rule syntax required a new meta interpreter in the [prolexa_engine.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_engine.pl)
+as well as  changes to the 
+[prolexa_grammar.pl](https://github.com/isabelladegen/ComputationalLogic/blob/prolexa-plus/prolexa/prolog/prolexa_grammar.pl).
+
+### Handling negated rules added to the knowledgebase
+AC
+B. Utterance is a question that can be answered
+test('Does opus fly', 'Sorry, I don\'t think this is the case')
+C. Utterance is a command that succeeds
+test('Explain why opus doesnt fly', 'opus is a penguin; penguins dont fly; therefore opus doesnt fly')
+test('Explain why opus flies', 'Sorry, I don\'t think this is the case')
+test('Tell me about opus', 'opus is a bird. opus is a penguin. opus doesnt fly')
+test('Spill the beans', 'every human is mortal. peter is human. some birds fly. penguins dont fly. every penguin is a bird. opus is a penguin. peep is a bird')
+
+
+### Adding default rules to the knowledgebase via query
+AC
+A
+
+### Adding negated rules to the knowledgebase via query
+AC
+A
+
+
+
 `
 ### Approach:
 Extend Prolexa to do default reasoning by introducing to types of rules: `default()` and `rules()`
